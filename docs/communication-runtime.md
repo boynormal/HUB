@@ -4,7 +4,7 @@ Two long-running processes and one tunnel:
 
 | Process | Command | Purpose |
 | --- | --- | --- |
-| Web | `npm run start` | Next.js on `127.0.0.1:3000` |
+| Web | `npm run start` | Next.js on `127.0.0.1:3110` |
 | Worker | `npm run worker` | pg-boss consumer for notifications and reminders |
 | Tunnel | `cloudflared tunnel run hub` | Publishes `hub.scharoenchai.cloud` |
 
@@ -44,6 +44,7 @@ Next.js listens on localhost only:
 
 ```powershell
 $env:HOSTNAME = "127.0.0.1"
+$env:PORT = "3110"
 npm run start
 ```
 
@@ -58,7 +59,7 @@ tunnel: hub
 credentials-file: C:\Users\<user>\.cloudflared\<tunnel-id>.json
 ingress:
   - hostname: hub.scharoenchai.cloud
-    service: http://127.0.0.1:3000
+    service: http://127.0.0.1:3110
   - service: http_status:404
 ```
 
@@ -70,7 +71,7 @@ Each process runs as a service so a reboot brings the app back without anyone lo
 ```powershell
 nssm install HubWeb "C:\Program Files\nodejs\node.exe" "node_modules\next\dist\bin\next" start
 nssm set HubWeb AppDirectory "D:\project\Communication Center"
-nssm set HubWeb AppEnvironmentExtra HOSTNAME=127.0.0.1 NODE_ENV=production
+nssm set HubWeb AppEnvironmentExtra HOSTNAME=127.0.0.1 NODE_ENV=production PORT=3110
 nssm set HubWeb AppStdout "D:\hub-data\logs\web.log"
 nssm set HubWeb AppStderr "D:\hub-data\logs\web.log"
 
@@ -87,7 +88,7 @@ the request; reminders wait until the worker returns.
 
 ## Health check
 
-- `http://127.0.0.1:3000/api/me` returns `{"signedIn":false}` when the web process is healthy.
+- `http://127.0.0.1:3110/api/me` returns `{"signedIn":false}` when the web process is healthy.
 - `select count(*) from pgboss.job where state = 'created';` shows queue backlog.
 - `select count(*) from communication_notifications where channel = 'LINE' and sent_at is null;`
   shows LINE pushes still waiting.

@@ -1,0 +1,11 @@
+﻿# คัดลอกไปที่ %USERPROFILE%\.cloudflared\config.yml
+# เปลี่ยน <tunnel-id> และเส้นทางไฟล์รหัสให้ตรงกับเครื่อง
+# สร้างอุโมงค์ด้วย: cloudflared tunnel create hub
+# แล้วชี้ DNS: cloudflared tunnel route dns hub hub.scharoenchai.cloud
+
+tunnel: hub
+credentials-file: C:\Users\<user>\.cloudflared\<tunnel-id>.json
+ingress:
+  - hostname: hub.scharoenchai.cloud
+    service: http://127.0.0.1:3110
+  - service: http_status:404
