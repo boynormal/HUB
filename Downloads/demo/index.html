@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="th" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ศูนย์บริการ IT</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Thai:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../src/styles/liquid-glass.css">
+<style>
+  .shell { display: grid; grid-template-columns: 248px minmax(0, 1fr); gap: var(--space-4); min-height: 100vh; padding: var(--space-4); }
+  .side { position: sticky; top: var(--space-4); align-self: start; height: calc(100vh - 2 * var(--space-4)); display: flex; flex-direction: column; padding: var(--space-4); gap: var(--space-4); }
+  .brand { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-1) var(--space-2); font-weight: 600; font-size: var(--text-base); }
+  .brand-mark { width: 30px; height: 30px; border-radius: 9px; background: linear-gradient(135deg, var(--accent), var(--info)); box-shadow: var(--inset-light); }
+  .nav { display: grid; gap: 2px; }
+  .nav a { display: flex; align-items: center; gap: var(--space-3); padding: 9px var(--space-3); color: var(--text-muted); text-decoration: none; border-radius: var(--radius-control); }
+  .nav a:hover { background: var(--glass-thin); color: var(--text); }
+  .nav a[aria-current="page"] { background: var(--glass-thick); color: var(--text); box-shadow: var(--inset-light); }
+  .nav .count { margin-left: auto; font-size: var(--text-xs); color: var(--text-muted); }
+  .nav svg, .btn svg { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+  .side-foot { margin-top: auto; display: flex; align-items: center; gap: var(--space-3); padding: var(--space-2); }
+  .avatar { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; font-weight: 600; background: var(--glass-thick); }
+
+  .main { display: grid; gap: var(--space-4); align-content: start; min-width: 0; }
+  .topbar { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3) var(--space-4); border-radius: var(--radius-float); position: sticky; top: var(--space-4); z-index: 5; }
+  .search { position: relative; flex: 1; max-width: 520px; }
+  .search .field { padding-right: 72px; }
+  .search .kbd { position: absolute; right: 10px; top: 50%; translate: 0 -50%; }
+  .topbar .spacer { flex: 1; }
+
+  .head h1 { font-size: var(--text-2xl); }
+  .head p { margin-top: var(--space-1); color: var(--text-muted); }
+
+  .grid { display: grid; gap: var(--space-4); grid-template-columns: minmax(0, 1.75fr) minmax(0, 1fr); align-items: start; }
+  .stack { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-4); min-width: 0; }
+
+  .services { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); }
+  .svc { display: flex; flex-direction: column; gap: 2px; padding: var(--space-4) var(--space-5); border-right: 1px solid var(--hairline); border-bottom: 1px solid var(--hairline); }
+  .svc .name { color: var(--text-muted); }
+  .svc .ms { font-size: var(--text-lg); font-weight: 500; }
+
+  .ticket-title { font-weight: 500; }
+  .ticket-sub { color: var(--text-muted); font-size: var(--text-xs); }
+  .sla-warn { color: var(--warn); font-weight: 500; }
+  .sla-danger { color: var(--danger); font-weight: 600; }
+
+  .incident { border-color: color-mix(in srgb, var(--danger) 45%, var(--hairline)); }
+  .incident .panel-head { border-bottom-color: color-mix(in srgb, var(--danger) 30%, var(--hairline)); }
+  .kv { display: grid; grid-template-columns: auto 1fr; gap: var(--space-2) var(--space-4); margin: 0 0 var(--space-4); }
+  .kv dt { color: var(--text-muted); }
+  .kv dd { margin: 0; }
+  .actions { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-4); }
+
+  .oncall { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-3); }
+  .oncall li { display: flex; align-items: center; gap: var(--space-3); }
+  .oncall .who { flex: 1; min-width: 0; }
+
+  .tools { display: flex; gap: var(--space-2); align-items: center; }
+  .tools .field { width: 180px; }
+
+  @media (max-width: 1100px) { .grid { grid-template-columns: 1fr; } }
+  @media (max-width: 820px) {
+    .shell { grid-template-columns: minmax(0, 1fr); padding: var(--space-3); }
+    .side { position: static; height: auto; flex-direction: row; align-items: center; gap: var(--space-3); overflow-x: auto; padding: var(--space-2) var(--space-3); border-radius: var(--radius-panel); }
+    .brand { white-space: nowrap; flex: none; }
+    .brand span:not(.brand-mark) { display: none; }
+    .side .nav { display: flex; flex: none; }
+    .side .nav a span.label { display: none; }
+    .side-foot { margin: 0 0 0 auto; flex: none; }
+    .side-foot div { display: none; }
+    .topbar { top: var(--space-2); flex-wrap: wrap; border-radius: var(--radius-panel); }
+    .search { flex: 1 1 100%; max-width: none; }
+    .search .kbd { display: none; }
+    .topbar .spacer { display: none; }
+    .topbar .btn-primary { flex: 1; }
+    .tools .field { display: none; }
+    .panel-head { flex-wrap: wrap; }
+  }
+</style>
+</head>
+<body>
+<div class="app-backdrop" aria-hidden="true"></div>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-inbox" viewBox="0 0 24 24"><path d="M3 13l3-8h12l3 8v6H3z"/><path d="M3 13h5l1 3h6l1-3h5"/></symbol>
+  <symbol id="i-server" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="6" rx="2"/><rect x="3" y="14" width="18" height="6" rx="2"/><path d="M7 7h.01M7 17h.01"/></symbol>
+  <symbol id="i-laptop" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="11" rx="2"/><path d="M2 20h20"/></symbol>
+  <symbol id="i-key" viewBox="0 0 24 24"><circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M16 7l3 3"/></symbol>
+  <symbol id="i-book" viewBox="0 0 24 24"><path d="M5 4h11a3 3 0 013 3v13H8a3 3 0 01-3-3z"/><path d="M5 17a3 3 0 013-3h11"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4-4"/></symbol>
+  <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 012-2h9"/></symbol>
+</svg>
+
+<div class="shell">
+  <aside class="side glass" aria-label="เมนูหลัก">
+    <div class="brand"><span class="brand-mark" aria-hidden="true"></span><span>IT Service Desk</span></div>
+    <nav class="nav">
+      <a href="#" aria-current="page"><svg><use href="#i-inbox"/></svg><span class="label">คิวงาน</span><span class="count tnum">24</span></a>
+      <a href="#"><svg><use href="#i-server"/></svg><span class="label">สถานะระบบ</span></a>
+      <a href="#"><svg><use href="#i-laptop"/></svg><span class="label">ทรัพย์สินและอุปกรณ์</span></a>
+      <a href="#"><svg><use href="#i-key"/></svg><span class="label">คำขอสิทธิ์เข้าถึง</span><span class="count tnum">7</span></a>
+      <a href="#"><svg><use href="#i-book"/></svg><span class="label">คู่มือแก้ปัญหา</span></a>
+    </nav>
+    <div class="side-foot">
+      <span class="avatar" aria-hidden="true">ธ</span>
+      <div><div>ธนกร วงศ์สุวรรณ</div><div class="muted" style="font-size:var(--text-xs)">เวรวันนี้ 08:00–17:00</div></div>
+    </div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar glass glass-thin">
+      <div class="search">
+        <input id="q" class="field" type="search" placeholder="ค้นหาตั๋ว เครื่อง หรือผู้ใช้" aria-label="ค้นหา">
+        <span class="kbd" aria-hidden="true">Ctrl K</span>
+      </div>
+      <span class="spacer"></span>
+      <button class="btn btn-icon" id="theme" aria-label="สลับธีมสว่างและมืด"><svg><use href="#i-sun"/></svg></button>
+      <button class="btn btn-primary"><svg><use href="#i-plus"/></svg>สร้างตั๋วใหม่</button>
+    </header>
+
+    <div class="head">
+      <h1>VPN ล่มที่สาขาเชียงใหม่ ส่งผลกับผู้ใช้ 38 คน</h1>
+      <p>เปิดเหตุการณ์เมื่อ 09:42 น. ทีมเครือข่ายกำลังตรวจสอบ gateway ของสาขา</p>
+    </div>
+
+    <section class="panel" aria-labelledby="svc-h">
+      <div class="panel-head"><h2 id="svc-h">สถานะระบบ</h2><span class="muted tnum" style="font-size:var(--text-xs)">อัปเดตทุก 30 วินาที</span></div>
+      <div class="services">
+        <div class="svc"><span class="name">VPN gateway CNX</span><span class="ms mono tnum">timeout</span><span class="status status-danger">ขัดข้อง</span></div>
+        <div class="svc"><span class="name">อีเมล Exchange</span><span class="ms mono tnum">42 ms</span><span class="status status-ok">ปกติ</span></div>
+        <div class="svc"><span class="name">Active Directory</span><span class="ms mono tnum">8 ms</span><span class="status status-ok">ปกติ</span></div>
+        <div class="svc"><span class="name">ไฟล์เซิร์ฟเวอร์</span><span class="ms mono tnum">310 ms</span><span class="status status-warn">ช้ากว่าปกติ</span></div>
+        <div class="svc"><span class="name">ERP</span><span class="ms mono tnum">96 ms</span><span class="status status-ok">ปกติ</span></div>
+        <div class="svc"><span class="name">Wi-Fi สำนักงานใหญ่</span><span class="ms mono tnum">12 ms</span><span class="status status-ok">ปกติ</span></div>
+      </div>
+    </section>
+
+    <div class="grid">
+      <section class="panel stack" style="gap:0" aria-labelledby="q-h">
+        <div class="panel-head">
+          <h2 id="q-h">คิวงานที่ต้องจัดการ</h2>
+          <div class="tools">
+            <input class="field" type="search" placeholder="กรองตามผู้รับผิดชอบ" aria-label="กรองคิวงาน">
+            <button class="btn">มอบหมายที่เลือก</button>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table class="table">
+            <thead><tr><th>รหัส</th><th>เรื่อง</th><th>ระดับ</th><th>ผู้รับผิดชอบ</th><th class="num">SLA เหลือ</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">INC-20418</td><td><div class="ticket-title">VPN เชื่อมต่อไม่ได้ สาขาเชียงใหม่</div><div class="ticket-sub">แจ้งโดย 38 คน</div></td><td><span class="badge badge-p1">P1</span></td><td>ธนกร</td><td class="num sla-danger">เกินเวลา 12 นาที</td></tr>
+              <tr><td class="mono">INC-20416</td><td><div class="ticket-title">ไฟล์เซิร์ฟเวอร์เปิดไฟล์ช้า</div><div class="ticket-sub">แผนกบัญชี ชั้น 4</div></td><td><span class="badge badge-p2">P2</span></td><td>ปรีชา</td><td class="num sla-warn">47 นาที</td></tr>
+              <tr><td class="mono">REQ-8831</td><td><div class="ticket-title">ขอสิทธิ์เข้า SharePoint โครงการ Q4</div><div class="ticket-sub">รออนุมัติจากหัวหน้าแผนก</div></td><td><span class="badge badge-p3">P3</span></td><td>ไม่ระบุ</td><td class="num">3 ชม.</td></tr>
+              <tr><td class="mono">INC-20411</td><td><div class="ticket-title">เครื่องพิมพ์ชั้น 3 ไม่ตอบสนอง</div><div class="ticket-sub">ทรัพย์สิน PR-0317</div></td><td><span class="badge badge-p3">P3</span></td><td>วิภา</td><td class="num">5 ชม.</td></tr>
+              <tr><td class="mono">REQ-8827</td><td><div class="ticket-title">เปลี่ยนโน้ตบุ๊กครบรอบ 4 ปี</div><div class="ticket-sub">ฝ่ายขาย คุณมะลิ</div></td><td><span class="badge badge-p4">P4</span></td><td>ปรีชา</td><td class="num">2 วัน</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <div class="stack">
+        <section class="panel incident" aria-labelledby="inc-h">
+          <div class="panel-head"><h2 id="inc-h">เหตุการณ์ที่เปิดอยู่</h2><span class="status status-danger">ขัดข้อง</span></div>
+          <div class="panel-body">
+            <dl class="kv">
+              <dt>รหัส</dt><dd class="mono">INC-20418</dd>
+              <dt>อุปกรณ์</dt><dd class="mono">fw-cnx-01 (10.14.2.1)</dd>
+              <dt>เริ่มเมื่อ</dt><dd>09:42 น. (ผ่านมา 31 นาที)</dd>
+              <dt>ผลกระทบ</dt><dd>ผู้ใช้ 38 คน ใช้งาน ERP ไม่ได้</dd>
+            </dl>
+<pre class="log">09:42:07 ipsec: phase1 timeout peer 203.0.113.21
+09:42:37 ipsec: retry 3/3 failed
+09:43:02 wan0: link flap detected
+09:44:15 ha: failover not triggered</pre>
+            <div class="actions">
+              <button class="btn btn-primary">เปลี่ยนไปใช้ลิงก์สำรอง</button>
+              <button class="btn"><svg><use href="#i-copy"/></svg>คัดลอกล็อก</button>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel" aria-labelledby="oc-h">
+          <div class="panel-head"><h2 id="oc-h">ทีมที่ออนไลน์</h2></div>
+          <div class="panel-body">
+            <ul class="oncall">
+              <li><span class="avatar" aria-hidden="true">ธ</span><span class="who">ธนกร<div class="ticket-sub">เครือข่าย กำลังรับ INC-20418</div></span><span class="status status-danger">ไม่ว่าง</span></li>
+              <li><span class="avatar" aria-hidden="true">ป</span><span class="who">ปรีชา<div class="ticket-sub">ระบบและเซิร์ฟเวอร์</div></span><span class="status status-warn">2 งาน</span></li>
+              <li><span class="avatar" aria-hidden="true">ว</span><span class="who">วิภา<div class="ticket-sub">ซัพพอร์ตหน้างาน</div></span><span class="status status-ok">ว่าง</span></li>
+            </ul>
+          </div>
+        </section>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const root = document.documentElement;
+  try { const t = localStorage.getItem('theme'); if (t) root.dataset.theme = t; } catch (e) {}
+  document.getElementById('theme').addEventListener('click', () => {
+    const next = root.dataset.theme === 'light' ? 'dark' : 'light';
+    root.dataset.theme = next;
+    try { localStorage.setItem('theme', next); } catch (e) {}
+  });
+  addEventListener('keydown', e => {
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); document.getElementById('q').focus(); }
+  });
+</script>
+</body>
+</html>

@@ -1,0 +1,201 @@
+---
+description: Modern, distinctive UI/UX design rules. Apply whenever creating or editing any user interface (components, pages, layouts, styles, copy).
+globs: ["**/*.tsx", "**/*.jsx", "**/*.vue", "**/*.svelte", "**/*.html", "**/*.css", "**/*.scss"]
+alwaysApply: false
+---
+
+# UI/UX Design Rules
+
+You are the design lead on this project, not a template generator. Every interface must look like it was designed by a person with a point of view for THIS product and THIS audience. If a screen could be pasted into any other product unchanged, it is not finished.
+
+## 0. Workflow (always follow)
+
+1. **Identify the product.** State in one line: what it is, who uses it, the one primary job of the screen. If the brief doesn't say, propose it and confirm before building.
+2. **Write a compact design plan** before any code:
+   - Color: 4–6 named hex values (background, surface, text, muted text, accent, danger/success if needed)
+   - Type: font(s) and their roles, plus a size scale
+   - Layout: one-sentence concept + ASCII wireframe, with alignment (left / centered)
+   - Principles: what makes this UI specific to this product
+3. **Review the plan against the "AI tells" list (section 1).** If any part is a default you'd use for any similar page, revise it and say what changed.
+4. **Build**, using design tokens (section 3), not hard-coded values.
+5. **Critique**: check against the quality checklist (section 9) and remove one decorative element.
+
+If the user's brief or an existing design system dictates a look, follow it exactly. These rules only fill the gaps the brief leaves open.
+
+## 1. Avoid the "AI-generated" look
+
+These are defaults, not choices. Do not use them unless the brief asks for them.
+
+**Palettes / moods that signal "generated"**
+- Warm cream background (~#F4F1EA) + high-contrast serif + terracotta/clay accent (~#D97757)
+- Near-black background + one acid-green or vermilion accent
+- Purple-to-blue / pink-to-orange gradient washes as decoration, gradient text, glowing blobs
+- Glassmorphism on everything
+
+**Layout / component tells**
+- Content chopped into identical rounded cards, same radius, same soft grey shadow everywhere
+- Hero = big number + small label + three stat tiles + gradient accent
+- Three-column "feature grid" with an icon in a tinted circle above each
+- Centered everything; every section the same rhythm and padding
+- Icon-in-colored-square on every list item
+
+**Typographic / chrome tells**
+- Tracked-out ALL-CAPS eyebrow label above every heading
+- Accenting one word in a headline (italic / bold / color)
+- Numbering "01 / 02 / 03" when the content isn't a real sequence
+- Monospace font for small labels just to feel "technical"
+- Meta strings with middle dots ("A · B · C"), "WORD — fragment" labels, "→" appended to every link/button
+- Pure `#0B0B0B` / `#111` tinted black used as a stand-in for design
+
+**Motion tells**
+- Fade-and-slide-up on every section as you scroll
+- Hover lift/scale/shadow on every card
+- Floating, pulsing, or shimmering decoration
+
+**Copy tells**
+- "Unlock the power of…", "Seamless", "Elevate", "Supercharge", "Welcome back! 👋", emoji as decoration
+- Lorem ipsum, or fake names like "John Doe" / "Acme Inc."
+
+## 2. Design with intent
+
+- **Spend boldness in one place.** Pick one memorable element (a type treatment, a layout move, a data visualization, a color moment). Keep everything else quiet and disciplined.
+- **Vary hierarchy.** Not everything is a card. Use whitespace, alignment, rules, and scale to group content. Use a card only when the content is a discrete, interactive, or comparable object.
+- **Vary radius and elevation deliberately.** Radius and shadow encode hierarchy (e.g., inputs ≠ buttons ≠ modals). Prefer borders or tonal surface changes over shadows for most separation.
+- **Structure is information.** Borders, dividers, numbering, and labels must mean something. If removing it loses nothing, remove it.
+- **Ground it in the subject.** Pull vocabulary, imagery, density, and tone from the product's actual domain (a fintech dashboard, a children's app, and a dev tool should not share a look).
+- **Show real content.** Design with realistic data, realistic lengths, and realistic edge cases (long names, empty, error, loading).
+
+## 3. Design tokens (single source of truth)
+
+Define tokens once (CSS variables, Tailwind theme, or the project's theme file) and reference them everywhere. Never hard-code colors, spacing, or font sizes in components.
+
+```css
+:root {
+  /* color — replace with the palette from your design plan */
+  --bg: ;
+  --surface: ;
+  --surface-raised: ;
+  --border: ;
+  --text: ;
+  --text-muted: ;
+  --accent: ;
+  --accent-contrast: ;
+  --danger: ;
+  --success: ;
+
+  /* type scale (ratio ~1.2–1.25) */
+  --text-xs: 0.8125rem;
+  --text-sm: 0.9375rem;
+  --text-base: 1rem;
+  --text-lg: 1.25rem;
+  --text-xl: 1.5625rem;
+  --text-2xl: 1.953rem;
+  --text-3xl: clamp(2.25rem, 4vw, 3.25rem);
+
+  /* spacing: 4px base */
+  --space-1: 0.25rem; --space-2: 0.5rem; --space-3: 0.75rem;
+  --space-4: 1rem;   --space-6: 1.5rem; --space-8: 2rem;
+  --space-12: 3rem;  --space-16: 4rem;  --space-24: 6rem;
+
+  /* radius by role, not one value for everything */
+  --radius-control: ;
+  --radius-surface: ;
+  --radius-overlay: ;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root { /* redefine color tokens; don't just invert */ }
+}
+```
+
+- Support light and dark by redefining tokens. Check contrast in both.
+- Use 4/8 px spacing rhythm. Section spacing should vary with importance, not repeat identically.
+- Prefer the project's existing stack (Tailwind, shadcn/ui, CSS Modules, etc.). Extend the theme; don't fight it. When using shadcn/ui or another kit, **restyle it** with your tokens so it doesn't look stock.
+
+## 4. Typography
+
+- Use one family or two clearly distinct families. Choose deliberately; don't default to Inter / Roboto / system-ui for every project.
+- Set a real type scale with intentional weights. Headlines can be an active part of the design, not just a neutral label.
+- Body line length < 80 characters (`max-width: 65ch` is a good start). Serif body text gets slightly more line-height.
+- Line-height: ~1.5 for body, 1.1–1.25 for large headings. Use `text-wrap: balance` for headings and `text-wrap: pretty` for paragraphs.
+- Use `font-variant-numeric: tabular-nums` for tables, prices, and metrics.
+- Sentence case for UI text. Avoid ALL CAPS for labels.
+
+**Thai text (ภาษาไทย)**
+- Use fonts with good Thai support and matching Latin glyphs, e.g. IBM Plex Sans Thai, Noto Sans Thai, Anuphan, Prompt, Sarabun, Kanit, Noto Serif Thai.
+- Thai needs more vertical space: body line-height 1.6–1.8, headings no tighter than 1.3, or tone marks and vowels get clipped.
+- Don't apply letter-spacing to Thai. Never use ALL CAPS logic for Thai.
+- Thai has no spaces between words: use `word-break: normal; overflow-wrap: anywhere` carefully, and test truncation with long strings.
+- Set `lang="th"` on the document or element.
+
+## 5. Color
+
+- Build from a small, harmonious palette: a neutral base with a slight hue (not pure grey), one accent, semantic colors only for status.
+- Don't use pure `#000` / `#fff` as a lazy default; don't use tinted near-black (#0B0B0B, #111) as a stand-in for a designed dark theme.
+- Accent is for actions and focus, used sparingly. Color is never the only carrier of meaning (add icon/text).
+- Contrast: body text ≥ 4.5:1, large text and UI boundaries ≥ 3:1.
+
+## 6. Layout & responsiveness
+
+- Mobile-first. Design for 360 px up through large desktop; no horizontal scroll on the page body.
+- Use CSS Grid/Flex with `gap`, `minmax`, `clamp()`, and container queries where useful. Avoid magic pixel values.
+- Choose alignment on purpose. Left-aligned reading text is the default; center only short, singular statements.
+- Create asymmetry and rhythm (a wide column + a narrow column, an offset, a full-bleed band) instead of repeating the same grid of equal boxes.
+- Wide content (tables, code, charts) scrolls inside its own container.
+- Respect safe areas on mobile (`env(safe-area-inset-*)`). Touch targets ≥ 44×44 px.
+
+## 7. Components, states, and UX
+
+Every interactive component must define all of its states: default, hover, focus-visible, active, disabled, loading, error, success, and empty.
+
+- **Forms:** visible labels (not placeholder-only), inline validation next to the field, error text that says what's wrong and how to fix it, correct `type`/`inputmode`/`autocomplete`, primary action at the end of the form.
+- **Buttons:** one primary action per view. Label with a specific verb ("Save changes", "Publish"), not "Submit" / "OK". Keep the same name for an action across button, confirmation, and toast.
+- **Navigation:** show where the user is; keep depth shallow; don't hide primary navigation behind a menu on desktop.
+- **Tables / lists:** align numbers right, support sorting/filtering when the data warrants it, handle long text and empty results.
+- **Feedback:** optimistic UI where safe, skeletons shaped like the final content (not generic spinners), toasts that confirm outcomes and offer undo for destructive actions.
+- **Empty states** are invitations to act: say what goes here and give the next step. **Error states** say what happened and how to fix it; no apologizing, no vague "Something went wrong".
+- **Destructive actions:** confirm with specific consequences, or provide undo.
+- Don't add UI the task doesn't need. Fewer elements, clearer priority.
+
+## 8. Motion
+
+- Motion must communicate a state change (open, expand, reorder, confirm) or direct attention once.
+- At most one orchestrated entrance moment per page. No scroll-triggered fade-ups on every section.
+- Durations 120–250 ms for UI feedback; ease-out for entering, ease-in for leaving. Animate `transform` and `opacity`, not layout properties.
+- Always honor `prefers-reduced-motion`:
+
+```css
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
+}
+```
+
+## 9. Quality floor (check before finishing)
+
+- [ ] Works from 360 px to wide desktop; no horizontal page scroll
+- [ ] Keyboard: logical tab order, visible `:focus-visible` ring that fits the design, no focus traps
+- [ ] Semantic HTML (`button`, `nav`, `main`, headings in order); ARIA only where HTML can't express it
+- [ ] Images have meaningful `alt` (or empty alt if decorative); icons-only buttons have `aria-label`
+- [ ] Contrast passes in light and dark
+- [ ] Loading, empty, error, and long-content states exist and look intentional
+- [ ] No hard-coded colors / spacing / font sizes outside tokens
+- [ ] `prefers-reduced-motion` respected
+- [ ] No item from the "AI tells" list remains unless the brief asked for it
+- [ ] One memorable element; removed at least one unnecessary decoration
+
+## 10. Writing UI copy
+
+- Write from the user's perspective in plain language: users "manage notifications", not "configure webhooks".
+- Active voice, sentence case, plain verbs, no filler or hype. Be specific rather than clever.
+- Each element does one job: a label labels, a hint hints, an error explains.
+- Use realistic, domain-appropriate sample content. Never ship lorem ipsum.
+- Match the language of the product (Thai UI → natural Thai, not literal translation; keep terms consistent across screens).
+
+## 11. Code conventions for UI work
+
+- Prefer composable, small components with clear props; keep presentation separate from data fetching.
+- Use semantic class names or utility classes consistently; avoid conflicting selector specificity (type selectors vs. element selectors canceling each other's padding/margin).
+- Avoid inline styles for anything that belongs in tokens.
+- Optimize images (modern formats, explicit width/height to prevent layout shift, lazy-load below the fold).
+- Don't add new dependencies for something CSS can do. Ask before introducing a new UI library.
+- When modifying existing UI, match and improve the established system rather than introducing a second visual language.

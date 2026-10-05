@@ -1,0 +1,570 @@
+// Hub Communication Center. Owns database `hub` only.
+// Table names stay snake_case to match plan.md; field names are camelCase in TypeScript.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------- organisation
+
+model Company {
+  id        String   @id @default(uuid())
+  name      String
+  code      String   @unique
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  branches    Branch[]
+  departments Department[]
+  positions   Position[]
+  users       User[]
+
+  @@map("companies")
+}
+
+model Branch {
+  id        String   @id @default(uuid())
+  companyId String   @map("company_id")
+  name      String
+  code      String   @unique
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  company     Company      @relation(fields: [companyId], references: [id])
+  departments Department[]
+  users       User[]
+
+  @@index([companyId])
+  @@map("branches")
+}
+
+/// A department can belong to one branch. A null branch means the department covers the whole company.
+/// managerUserId is the single person notified when an acknowledgement deadline passes.
+model Department {
+  id            String   @id @default(uuid())
+  companyId     String   @map("company_id")
+  branchId      String?  @map("branch_id")
+  name          String
+  code          String   @unique
+  managerUserId String?  @map("manager_user_id")
+  isActive      Boolean  @default(true) @map("is_active")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  company Company @relation(fields: [companyId], references: [id])
+  branch  Branch? @relation(fields: [branchId], references: [id])
+  manager User?   @relation("DepartmentManager", fields: [managerUserId], references: [id])
+  members User[]  @relation("DepartmentMembers")
+
+  @@index([companyId])
+  @@index([branchId])
+  @@index([managerUserId])
+  @@map("departments")
+}
+
+model Position {
+  id        String   @id @default(uuid())
+  companyId String   @map("company_id")
+  name      String
+  code      String   @unique
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  company Company @relation(fields: [companyId], references: [id])
+  users   User[]
+
+  @@index([companyId])
+  @@map("positions")
+}
+
+enum UserStatus {
+  INVITED
+  ACTIVE
+  SUSPENDED
+}
+
+/// Employees are created by an admin. LINE is linked later with employeeCode + inviteCode.
+model User {
+  id             String     @id @default(uuid())
+  employeeCode   String     @unique @map("employee_code")
+  fullName       String     @map("full_name")
+  nickname       String?
+  email          String?
+  phone          String?
+  avatarUrl      String?    @map("avatar_url")
+  companyId      String     @map("company_id")
+  branchId       String?    @map("branch_id")
+  departmentId   String?    @map("department_id")
+  positionId     String?    @map("position_id")
+  status         UserStatus @default(INVITED)
+  lineUserId     String?    @unique @map("line_user_id")
+  lineLinkedAt   DateTime?  @map("line_linked_at")
+  inviteCodeHash String?    @map("invite_code_hash")
+  passwordHash   String?    @map("password_hash")
+  lastLoginAt    DateTime?  @map("last_login_at")
+  createdAt      DateTime   @default(now()) @map("created_at")
+  updatedAt      DateTime   @updatedAt @map("updated_at")
+
+  company    Company     @relation(fields: [companyId], references: [id])
+  branch     Branch?     @relation(fields: [branchId], references: [id])
+  department Department? @relation("DepartmentMembers", fields: [departmentId], references: [id])
+  position   Position?   @relation(fields: [positionId], references: [id])
+
+  managedDepartments Department[]                @relation("DepartmentManager")
+  roles              UserRole[]
+  groupMemberships   GroupMember[]
+  managedTopics      CommunicationTopic[]        @relation("TopicManager")
+  authoredPosts      CommunicationPost[]         @relation("PostAuthor")
+  publishedPosts     CommunicationPost[]         @relation("PostPublisher")
+  receipts           CommunicationPostReceipt[]
+  comments           CommunicationComment[]
+  uploads            CommunicationAttachment[]
+  notifications      CommunicationNotification[]
+  auditLogs          CommunicationAuditLog[]
+
+  @@index([companyId])
+  @@index([branchId])
+  @@index([departmentId])
+  @@index([positionId])
+  @@index([status])
+  @@map("users")
+}
+
+// ------------------------------------------------------------------------ rbac
+
+enum PermissionScope {
+  COMPANY
+  BRANCH
+  DEPARTMENT
+  TOPIC
+  OWN
+}
+
+model Permission {
+  id        String   @id @default(uuid())
+  key       String   @unique
+  label     String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  roles RolePermission[]
+
+  @@map("permissions")
+}
+
+model Role {
+  id          String   @id @default(uuid())
+  key         String   @unique
+  name        String
+  description String?
+  isSystem    Boolean  @default(false) @map("is_system")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  permissions RolePermission[]
+  users       UserRole[]
+
+  @@map("roles")
+}
+
+model RolePermission {
+  roleId       String          @map("role_id")
+  permissionId String          @map("permission_id")
+  scope        PermissionScope @default(COMPANY)
+
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+/// A role grant can be narrowed to a branch, a department or a topic.
+model UserRole {
+  id           String          @id @default(uuid())
+  userId       String          @map("user_id")
+  roleId       String          @map("role_id")
+  scope        PermissionScope @default(COMPANY)
+  branchId     String?         @map("branch_id")
+  departmentId String?         @map("department_id")
+  topicId      String?         @map("topic_id")
+  createdAt    DateTime        @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, roleId, scope, branchId, departmentId, topicId])
+  @@index([userId])
+  @@index([roleId])
+  @@map("user_roles")
+}
+
+model Group {
+  id          String   @id @default(uuid())
+  name        String
+  slug        String   @unique
+  description String?
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  members GroupMember[]
+
+  @@map("groups")
+}
+
+model GroupMember {
+  groupId String @map("group_id")
+  userId  String @map("user_id")
+
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([groupId, userId])
+  @@index([userId])
+  @@map("group_members")
+}
+
+// --------------------------------------------------------------- communication
+
+model CommunicationTopic {
+  id            String   @id @default(uuid())
+  name          String
+  slug          String   @unique
+  description   String?
+  icon          String?
+  color         String?
+  sortOrder     Int      @default(0) @map("sort_order")
+  isActive      Boolean  @default(true) @map("is_active")
+  managerUserId String?  @map("manager_user_id")
+  maxPinned     Int      @default(3) @map("max_pinned")
+  createdBy     String?  @map("created_by")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  manager User?               @relation("TopicManager", fields: [managerUserId], references: [id])
+  posts   CommunicationPost[]
+
+  @@index([isActive])
+  @@map("communication_topics")
+}
+
+model CommunicationTag {
+  id        String   @id @default(uuid())
+  name      String
+  slug      String   @unique
+  color     String?
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  posts CommunicationPostTag[]
+
+  @@map("communication_tags")
+}
+
+enum PostType {
+  ANNOUNCEMENT
+  NEWS
+  ALERT
+  PROCEDURE
+  TRAINING
+  EVENT
+  QUESTION
+  DOCUMENT
+  INSTRUCTION
+  POLL
+}
+
+enum Priority {
+  NORMAL
+  INFO
+  IMPORTANT
+  URGENT
+  CRITICAL
+}
+
+enum PostStatus {
+  DRAFT
+  SCHEDULED
+  PUBLISHED
+  EXPIRED
+  ARCHIVED
+  CANCELLED
+}
+
+model CommunicationPost {
+  id                   String     @id @default(uuid())
+  topicId              String     @map("topic_id")
+  postType             PostType   @default(ANNOUNCEMENT) @map("post_type")
+  title                String
+  summary              String?
+  content              String
+  priority             Priority   @default(NORMAL)
+  status               PostStatus @default(DRAFT)
+  authorId             String     @map("author_id")
+  publishedAt          DateTime?  @map("published_at")
+  scheduledAt          DateTime?  @map("scheduled_at")
+  expiresAt            DateTime?  @map("expires_at")
+  isPinned             Boolean    @default(false) @map("is_pinned")
+  isFeatured           Boolean    @default(false) @map("is_featured")
+  requiresRead         Boolean    @default(true) @map("requires_read")
+  requiresConfirmation Boolean    @default(false) @map("requires_confirmation")
+  confirmationDeadline DateTime?  @map("confirmation_deadline")
+  allowComments        Boolean    @default(true) @map("allow_comments")
+  allowReactions       Boolean    @default(true) @map("allow_reactions")
+  coverImagePath       String?    @map("cover_image_path")
+  publishedBy          String?    @map("published_by")
+  deletedAt            DateTime?  @map("deleted_at")
+  createdAt            DateTime   @default(now()) @map("created_at")
+  updatedAt            DateTime   @updatedAt @map("updated_at")
+
+  topic       CommunicationTopic          @relation(fields: [topicId], references: [id])
+  author      User                        @relation("PostAuthor", fields: [authorId], references: [id])
+  publisher   User?                       @relation("PostPublisher", fields: [publishedBy], references: [id])
+  tags        CommunicationPostTag[]
+  targets     CommunicationPostTarget[]
+  receipts    CommunicationPostReceipt[]
+  comments    CommunicationComment[]
+  attachments CommunicationAttachment[]
+  reminders   CommunicationPostReminder[]
+  versions    CommunicationPostVersion[]
+
+  @@index([topicId])
+  @@index([status])
+  @@index([publishedAt])
+  @@index([priority])
+  @@index([scheduledAt])
+  @@index([expiresAt])
+  @@index([confirmationDeadline])
+  @@map("communication_posts")
+}
+
+model CommunicationPostTag {
+  postId String @map("post_id")
+  tagId  String @map("tag_id")
+
+  post CommunicationPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  tag  CommunicationTag  @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([postId, tagId])
+  @@index([tagId])
+  @@map("communication_post_tags")
+}
+
+enum TargetType {
+  ALL
+  COMPANY
+  BRANCH
+  DEPARTMENT
+  POSITION
+  ROLE
+  USER
+  GROUP
+}
+
+/// Targets are stored as rules. Receipts are resolved from these rules at publish time.
+model CommunicationPostTarget {
+  id         String     @id @default(uuid())
+  postId     String     @map("post_id")
+  targetType TargetType @map("target_type")
+  targetId   String?    @map("target_id")
+
+  post CommunicationPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, targetType, targetId])
+  @@index([postId])
+  @@map("communication_post_targets")
+}
+
+/// Delivered, read and acknowledged are separate states. Read never implies acknowledged.
+model CommunicationPostReceipt {
+  id              String    @id @default(uuid())
+  postId          String    @map("post_id")
+  userId          String    @map("user_id")
+  deliveredAt     DateTime  @default(now()) @map("delivered_at")
+  readAt          DateTime? @map("read_at")
+  acknowledgedAt  DateTime? @map("acknowledged_at")
+  acknowledgeNote String?   @map("acknowledge_note")
+  lastViewedAt    DateTime? @map("last_viewed_at")
+  viewCount       Int       @default(0) @map("view_count")
+
+  post CommunicationPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, userId])
+  @@index([postId])
+  @@index([userId])
+  @@index([userId, readAt])
+  @@index([userId, acknowledgedAt])
+  @@map("communication_post_receipts")
+}
+
+enum CommentStatus {
+  VISIBLE
+  HIDDEN
+  DELETED
+}
+
+model CommunicationComment {
+  id        String        @id @default(uuid())
+  postId    String        @map("post_id")
+  parentId  String?       @map("parent_id")
+  userId    String        @map("user_id")
+  content   String
+  status    CommentStatus @default(VISIBLE)
+  isPinned  Boolean       @default(false) @map("is_pinned")
+  createdAt DateTime      @default(now()) @map("created_at")
+  updatedAt DateTime      @updatedAt @map("updated_at")
+  deletedAt DateTime?     @map("deleted_at")
+
+  post        CommunicationPost         @relation(fields: [postId], references: [id], onDelete: Cascade)
+  parent      CommunicationComment?     @relation("CommentThread", fields: [parentId], references: [id])
+  replies     CommunicationComment[]    @relation("CommentThread")
+  user        User                      @relation(fields: [userId], references: [id])
+  attachments CommunicationAttachment[]
+
+  @@index([postId])
+  @@index([parentId])
+  @@map("communication_comments")
+}
+
+/// One row per edition of a post. The post row itself stays the edition employees see in the feed.
+model CommunicationPostVersion {
+  id          String   @id @default(uuid())
+  postId      String   @map("post_id")
+  label       String
+  title       String
+  summary     String?
+  content     String
+  isCurrent   Boolean  @default(false) @map("is_current")
+  publishedAt DateTime @default(now()) @map("published_at")
+  createdBy   String?  @map("created_by")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  post        CommunicationPost         @relation(fields: [postId], references: [id], onDelete: Cascade)
+  attachments CommunicationAttachment[]
+
+  @@unique([postId, label])
+  @@index([postId])
+  @@map("communication_post_versions")
+}
+
+model CommunicationAttachment {
+  id            String    @id @default(uuid())
+  postId        String?   @map("post_id")
+  commentId     String?   @map("comment_id")
+  postVersionId String?   @map("post_version_id")
+  fileName      String    @map("file_name")
+  storedName    String    @unique @map("stored_name")
+  mimeType      String    @map("mime_type")
+  fileSize      Int       @map("file_size")
+  version       Int       @default(1)
+  uploadedBy    String    @map("uploaded_by")
+  downloadCount Int       @default(0) @map("download_count")
+  deletedAt     DateTime? @map("deleted_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  post        CommunicationPost?        @relation(fields: [postId], references: [id], onDelete: Cascade)
+  comment     CommunicationComment?     @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  postVersion CommunicationPostVersion? @relation(fields: [postVersionId], references: [id])
+  uploader    User                      @relation(fields: [uploadedBy], references: [id])
+
+  @@index([postId])
+  @@index([commentId])
+  @@index([postVersionId])
+  @@map("communication_attachments")
+}
+
+enum NotificationType {
+  NEW_POST
+  MENTION
+  COMMENT
+  REPLY
+  CONFIRMATION_REQUIRED
+  CONFIRMATION_REMINDER
+  DEADLINE
+  MANAGER_SUMMARY
+  OVERDUE
+  SYSTEM
+}
+
+enum NotificationChannel {
+  IN_APP
+  LINE
+  EMAIL
+  PUSH
+}
+
+model CommunicationNotification {
+  id        String              @id @default(uuid())
+  userId    String              @map("user_id")
+  type      NotificationType
+  channel   NotificationChannel @default(IN_APP)
+  title     String
+  body      String?
+  linkPath  String?             @map("link_path")
+  postId    String?             @map("post_id")
+  commentId String?             @map("comment_id")
+  isUrgent  Boolean             @default(false) @map("is_urgent")
+  readAt    DateTime?           @map("read_at")
+  sentAt    DateTime?           @map("sent_at")
+  error     String?
+  createdAt DateTime            @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, readAt])
+  @@index([postId])
+  @@map("communication_notifications")
+}
+
+enum ReminderKind {
+  BEFORE_DEADLINE
+  UNREAD
+  READ_NOT_ACK
+  MANAGER_AT_DEADLINE
+  ADMIN_OVERDUE
+}
+
+/// Reminder plan for one post. The worker turns each row into notification jobs.
+model CommunicationPostReminder {
+  id        String       @id @default(uuid())
+  postId    String       @map("post_id")
+  kind      ReminderKind
+  offsetMin Int          @default(0) @map("offset_min")
+  runAt     DateTime     @map("run_at")
+  sentAt    DateTime?    @map("sent_at")
+  createdAt DateTime     @default(now()) @map("created_at")
+
+  post CommunicationPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@index([postId])
+  @@index([runAt, sentAt])
+  @@map("communication_post_reminders")
+}
+
+/// Append only. Never updated or deleted by application code.
+model CommunicationAuditLog {
+  id        String   @id @default(uuid())
+  userId    String?  @map("user_id")
+  action    String
+  entity    String
+  entityId  String?  @map("entity_id")
+  ipAddress String?  @map("ip_address")
+  metadata  Json?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User? @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([entity, entityId])
+  @@index([createdAt])
+  @@map("communication_audit_logs")
+}

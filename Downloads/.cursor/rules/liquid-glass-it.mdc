@@ -1,0 +1,109 @@
+---
+description: Project design direction. Liquid glass UI for an internal IT department tool (service desk, monitoring, assets, access requests). Applies to every UI task in this project.
+globs: ["**/*.tsx", "**/*.jsx", "**/*.vue", "**/*.svelte", "**/*.html", "**/*.css", "**/*.scss"]
+alwaysApply: true
+---
+
+# Design direction: Liquid Glass for IT
+
+This file sets the visual direction for the project. It overrides the "avoid glassmorphism" and palette defaults in `ui-ux-design.mdc`; all other rules there still apply.
+
+**Source of truth:** `src/styles/liquid-glass.css` (tokens + primitives). Reference implementation: `demo/index.html`.
+Before writing any UI, read the CSS file. Reuse its tokens and classes. Do not invent new colors, radii, shadows, or blur values, and do not copy the glass recipe into components. If something is missing, extend the CSS file, then use it.
+
+## 1. Product context
+
+- Internal tool for an IT department: ticket queue, incidents, system status, asset inventory, access requests, knowledge base.
+- Two audiences: **IT staff** (all day, dense, keyboard-heavy, under time pressure) and **employees** (occasional, need simple forms and clear status).
+- Default language is Thai with English technical terms. UI must work in both light and dark theme.
+
+## 2. Where glass goes (and where it doesn't)
+
+Liquid glass = translucent layers that float above content. Use it with restraint so it stays readable and fast.
+
+| Use `.glass` (floating) | Use `.panel` (content) | Never glass |
+|---|---|---|
+| Sidebar, top bar, dialogs, popovers, dropdowns, command palette, toasts, sticky filter bars | Tables, forms, logs, charts, lists, detail views | Individual table rows, list items, badges, inputs, every card in a grid |
+
+Rules:
+- Maximum two stacked glass layers. Never glass inside glass inside glass.
+- Text must meet contrast (4.5:1 body, 3:1 large/UI) against the **worst-case** backdrop behind it, in both themes. If not, use `.panel` or `.glass-thick`.
+- Keep roughly 6 or fewer `backdrop-filter` elements visible at once. Never animate blur radius. Don't put blur on items inside long scrolling lists.
+- Always keep the fallbacks in the CSS (`@supports`, `prefers-reduced-transparency`, `prefers-contrast`, `forced-colors`). Don't remove them.
+- The page needs `<div class="app-backdrop" aria-hidden="true"></div>`; glass looks flat without something behind it.
+- Optional enhancement: SVG displacement "refraction" on one hero element (nav or a dialog) in Chromium only, with the normal glass as fallback. Not required, never on content.
+
+## 3. Palette (already defined as tokens)
+
+| Role | Dark | Light |
+|---|---|---|
+| Backdrop base | `#0c2431` petrol | `#dbe9ee` |
+| Text | `#eaf4f6` | `#0c222b` |
+| Accent (actions, focus) | `#3fe0c5` mint-teal | `#0b7f72` |
+| Info | `#6aa8ff` | `#1d5fd0` |
+| OK / Warn / Danger | `#4ade80` / `#fbbf24` / `#ff7a7a` | `#167a3e` / `#9a6200` / `#c43030` |
+
+- One accent only. Status colors are for status only, never decoration.
+- No rainbow or purple-pink gradients, no neon glow, no gradient text. The only gradients allowed are the backdrop, the primary button, and the specular rim on glass.
+- Status is never color-only: use `.status` (dot + text) or `.badge` (text label).
+
+## 4. Typography
+
+- `IBM Plex Sans Thai` for UI text (falls back to `IBM Plex Sans`), `IBM Plex Mono` for **data**: ticket IDs, hostnames, IPs, log lines, latency, commands. Mono is for data only, never for decorative labels.
+- Thai line-height ≥ 1.6 for body, ≥ 1.3 for headings. No letter-spacing on Thai. Sentence case in English; no ALL CAPS labels.
+- Numbers in tables and metrics use `tabular-nums`; right-align numeric columns.
+- Don't use fake "terminal" styling on regular UI.
+
+## 5. Layout
+
+- App shell: floating glass sidebar (248 px) + sticky glass top bar + content in `.panel`s. Rounded by role: control 10, panel 18, floating 24 (use tokens).
+- Layouts are asymmetric and prioritized: the most urgent item (an open incident, a breached SLA) gets visual priority, not equal-sized cards.
+- Don't turn every group into a card. Group with spacing, hairlines, and alignment first.
+- Data-dense by default (table rows ≈ 52 px with two-line cells). Offer a compact density toggle where lists are long.
+- Mobile: sidebar collapses to a top icon bar; tables scroll inside `.table-wrap`; no horizontal page scroll; touch targets ≥ 44 px.
+
+## 6. IT-specific UX patterns
+
+- **Urgency first:** sort by priority and SLA. Show SLA remaining with state (normal / warning / breached). Breached items use danger text plus a label ("เกินเวลา 12 นาที"), not just red.
+- **Status vocabulary** is fixed: ปกติ, ช้ากว่าปกติ, ขัดข้อง, ไม่ว่าง, ว่าง. Priorities are P1–P4. Reuse the same words everywhere.
+- **Keyboard first:** `Ctrl/⌘ K` command palette and search, `j/k` to move through lists, `Enter` to open, `Esc` to close. Show shortcuts with `.kbd`.
+- **Copy affordances** on IDs, IPs, hostnames, and logs. One click copies; confirm with a toast saying "คัดลอกแล้ว".
+- **Time:** relative ("31 นาทีที่แล้ว") with the absolute timestamp on hover/focus. Use 24-hour time and Buddhist/Gregorian year consistently per the app's setting.
+- **Live data:** update in place without shifting layout; keep row positions stable; show last-updated time.
+- **Bulk actions:** appear when rows are selected, name the count ("มอบหมาย 3 รายการ").
+- **Destructive or risky actions** (reboot, disable account, delete asset): confirm in a dialog that names the target and consequence; for production/critical hosts require typing the hostname.
+- **Empty/error states:** say what happened and the next step ("ไม่พบตั๋วที่ตรงกับตัวกรอง ล้างตัวกรองเพื่อดูทั้งหมด"). No apologies, no mascots.
+- **Employee-facing forms:** ask for the minimum, use plain words (not "provision", "endpoint"), show expected response time after submit.
+
+## 7. Motion
+
+- Motion only for state change: dialog open/close, popover, row expand, toast, theme switch. 120–250 ms, `var(--ease-out)`.
+- No scroll-reveal, no floating/pulsing blobs, no hover-lift on cards. Hover = background change.
+- Optional single moment: first load of the dashboard may fade the glass shell in once.
+- Respect `prefers-reduced-motion` (already in the CSS).
+
+## 8. Copy
+
+- Thai, plain and direct: verb-first buttons ("สร้างตั๋วใหม่", "เปลี่ยนไปใช้ลิงก์สำรอง", "คัดลอกล็อก"). Same action name through button, dialog, and toast.
+- Keep established technical terms in English (VPN, gateway, SLA, Active Directory). Don't half-translate them.
+- No filler or hype, no emoji as decoration, no lorem ipsum. Use realistic sample data (Thai names, INC-/REQ- IDs, plausible IPs from documentation ranges like `203.0.113.x`, `10.x.x.x`).
+
+## 9. Don'ts (quick list)
+
+- Don't put `.glass` on every card or table row.
+- Don't hard-code `rgba(255,255,255,…)`, `blur(…)`, or hex colors in components; use tokens.
+- Don't add a second accent color or a decorative gradient.
+- Don't use eyebrow labels, "01/02/03" numbering, middle-dot meta strings, or "→" suffixes unless the content truly needs them.
+- Don't use white text on light glass or dark text on dark glass without checking contrast.
+- Don't ship without checking both themes, the mobile layout, and keyboard focus.
+
+## 10. Done checklist (for every UI change)
+
+- [ ] Uses tokens and classes from `liquid-glass.css`; no new magic values
+- [ ] Glass only on floating layers; content on `.panel`
+- [ ] Light and dark both checked; contrast passes over the backdrop
+- [ ] 360 px to desktop, no horizontal page scroll
+- [ ] Keyboard path works; `:focus-visible` is visible
+- [ ] Loading, empty, error, long-text (Thai without spaces) states handled
+- [ ] Status shown with text or icon, not color alone
+- [ ] Reduced-transparency / reduced-motion fallbacks intact

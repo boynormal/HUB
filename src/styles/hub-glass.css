@@ -1,0 +1,134 @@
+/* Tokens and floating layers only. Tag resets from liquid-glass.css are intentionally left out. */
+
+:root {
+  color-scheme: dark;
+  --radius-control: 10px;
+  --radius-panel: 18px;
+  --radius-float: 24px;
+  --bd-base: #061018;
+  --bd-deep: #03080c;
+  --bd-teal: #0e4f4a;
+  --bd-blue: #163e86;
+  --bd-amber: #8a4e08;
+  --text: #f4fbfc;
+  --text-muted: #8ea8b0;
+  --accent: #2ef0cf;
+  --accent-strong: #14c4a8;
+  --accent-contrast: #021614;
+  --ok: #3dff9a;
+  --warn: #ffc14d;
+  --danger: #ff5d5d;
+  --glass-thin: rgba(255, 255, 255, 0.04);
+  --glass-fill: rgba(8, 18, 24, 0.72);
+  --glass-thick: rgba(10, 22, 30, 0.84);
+  --panel: rgba(6, 14, 20, 0.88);
+  --panel-solid: #0a141c;
+  --hairline: rgba(255, 255, 255, 0.16);
+  --blur: 24px;
+  --saturate: 165%;
+  --shadow-float: 0 12px 40px -8px rgba(2, 10, 16, 0.55);
+  --shadow-panel: 0 6px 24px -10px rgba(2, 10, 16, 0.5);
+  --inset-light: inset 0 1px 0 rgba(255, 255, 255, 0.28);
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+  --bd-base: #dbe9ee;
+  --bd-deep: #c9dde5;
+  --bd-teal: #8fd9cf;
+  --bd-blue: #9bbcf2;
+  --bd-amber: #f3d19a;
+  --text: #0c222b;
+  --text-muted: #46606a;
+  --accent: #0b7f72;
+  --accent-strong: #096a5f;
+  --accent-contrast: #ffffff;
+  --ok: #167a3e;
+  --warn: #9a6200;
+  --danger: #c43030;
+  --glass-thin: rgba(255, 255, 255, 0.35);
+  --glass-fill: rgba(255, 255, 255, 0.62);
+  --glass-thick: rgba(255, 255, 255, 0.78);
+  --panel: rgba(255, 255, 255, 0.82);
+  --panel-solid: #f3f8fa;
+  --hairline: rgba(12, 34, 43, 0.12);
+  --shadow-float: 0 12px 36px -10px rgba(20, 50, 66, 0.28);
+  --shadow-panel: 0 6px 20px -12px rgba(20, 50, 66, 0.3);
+  --inset-light: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+.app-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background:
+    radial-gradient(60vmax 45vmax at 12% 8%, color-mix(in srgb, var(--bd-teal) 85%, transparent), transparent 62%),
+    radial-gradient(55vmax 40vmax at 92% 20%, color-mix(in srgb, var(--bd-blue) 75%, transparent), transparent 60%),
+    radial-gradient(40vmax 30vmax at 70% 105%, color-mix(in srgb, var(--bd-amber) 55%, transparent), transparent 65%),
+    var(--bd-base);
+}
+
+.glass {
+  isolation: isolate;
+  background: var(--glass-fill);
+  -webkit-backdrop-filter: blur(var(--blur)) saturate(var(--saturate));
+  backdrop-filter: blur(var(--blur)) saturate(var(--saturate));
+  box-shadow: var(--shadow-float), var(--inset-light);
+}
+
+.glass-thick {
+  background: var(--glass-thick);
+}
+
+/* Light rim only. Does not set position, so fixed and sticky bars stay put. */
+.glass-rim {
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-float);
+}
+.glass-rim::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  padding: 1px;
+  pointer-events: none;
+  background: linear-gradient(
+    145deg,
+    rgba(255, 255, 255, 0.55),
+    rgba(255, 255, 255, 0.08) 42%,
+    rgba(255, 255, 255, 0.22)
+  );
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+}
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-panel);
+  box-shadow: var(--shadow-panel);
+}
+
+.bar {
+  background: var(--panel-solid);
+  border-color: var(--hairline);
+}
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .glass,
+  .panel {
+    background: var(--panel-solid);
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .glass,
+  .panel {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    background: var(--panel-solid);
+  }
+}

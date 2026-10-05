@@ -1,0 +1,183 @@
+@import "tailwindcss";
+@import "../styles/hub-glass.css";
+
+/* Existing screens keep these names. The values follow the glass tokens, including light theme. */
+:root {
+  --hub-bg: transparent;
+  --hub-surface: var(--panel-solid);
+  --hub-surface-muted: color-mix(in srgb, var(--text) 8%, transparent);
+  --hub-text: var(--text);
+  --hub-muted: var(--text-muted);
+  --hub-border: var(--hairline);
+  --hub-accent: var(--accent);
+  --hub-accent-contrast: var(--accent-contrast);
+  --hub-accent-soft: color-mix(in srgb, var(--accent) 18%, transparent);
+  --hub-amber: var(--warn);
+  --hub-amber-soft: color-mix(in srgb, var(--warn) 18%, transparent);
+  --hub-orange: var(--warn);
+  --hub-orange-soft: color-mix(in srgb, var(--warn) 18%, transparent);
+  --hub-red: var(--danger);
+  --hub-red-soft: color-mix(in srgb, var(--danger) 16%, transparent);
+  --hub-green: var(--ok);
+  --hub-green-soft: color-mix(in srgb, var(--ok) 16%, transparent);
+  --hub-shadow: var(--shadow-panel);
+  --hub-navy: var(--bd-deep);
+  --hub-navy-2: var(--bd-base);
+}
+
+@theme inline {
+  --color-bg: var(--hub-bg);
+  --color-surface: var(--hub-surface);
+  --color-surface-muted: var(--hub-surface-muted);
+  --color-ink: var(--hub-text);
+  --color-muted: var(--hub-muted);
+  --color-line: var(--hub-border);
+  --color-accent: var(--hub-accent);
+  --color-accent-ink: var(--hub-accent-contrast);
+  --color-accent-soft: var(--hub-accent-soft);
+  --color-amber: var(--hub-amber);
+  --color-amber-soft: var(--hub-amber-soft);
+  --color-orange: var(--hub-orange);
+  --color-orange-soft: var(--hub-orange-soft);
+  --color-danger: var(--hub-red);
+  --color-danger-soft: var(--hub-red-soft);
+  --color-success: var(--hub-green);
+  --color-success-soft: var(--hub-green-soft);
+  --font-sans: var(--font-plex-thai), var(--font-anuphan), "IBM Plex Sans Thai", Tahoma, sans-serif;
+  --shadow-card: var(--hub-shadow);
+}
+
+html,
+body {
+  background: transparent;
+  letter-spacing: 0;
+}
+
+body {
+  color: var(--text);
+  font-family: var(--font-plex-thai), var(--font-anuphan), "IBM Plex Sans Thai", Tahoma, sans-serif;
+  font-size: 16px;
+  line-height: 1.65;
+}
+
+/* Reserves the LINE in-app browser chrome at the bottom of the screen. */
+.safe-bottom {
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 0.5rem);
+}
+
+.thumb-zone {
+  min-height: 44px;
+}
+
+.hub-card {
+  background: var(--panel);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-panel);
+  box-shadow: var(--shadow-panel);
+}
+
+.section-label {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 0.7rem;
+  color: var(--hub-muted);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+.section-label::after {
+  content: "";
+  height: 1px;
+  flex: 1;
+  background: var(--hub-border);
+}
+
+.data-table {
+  overflow-x: auto;
+  border: 1px solid var(--hub-border);
+  border-radius: 1rem;
+  background: var(--hub-surface);
+  box-shadow: var(--hub-shadow);
+}
+.data-table thead {
+  background: var(--hub-surface-muted);
+}
+.data-table th {
+  font-weight: 600;
+  color: var(--hub-muted);
+}
+.data-table tbody tr:hover {
+  background: color-mix(in srgb, var(--hub-accent) 6%, transparent);
+}
+
+.auth-screen {
+  background: transparent;
+}
+
+/* Post content comes from the composer and is sanitised on the server. */
+.post-body {
+  line-height: 1.75;
+}
+.post-body h2 {
+  font-size: 1.15rem;
+  font-weight: 600;
+  margin: 1.4em 0 0.5em;
+}
+.post-body h3 {
+  font-size: 1.05rem;
+  font-weight: 600;
+  margin: 1.2em 0 0.4em;
+}
+.post-body p {
+  margin: 0 0 1em;
+}
+.post-body ul,
+.post-body ol {
+  margin: 0 0 1em 1.25em;
+  list-style: disc;
+}
+.post-body ol {
+  list-style: decimal;
+}
+.post-body li {
+  margin-bottom: 0.35em;
+}
+.post-body a {
+  color: var(--hub-accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.post-body strong {
+  font-weight: 600;
+}
+.post-body blockquote {
+  border-left: 3px solid var(--hub-border);
+  padding-left: 0.9rem;
+  color: var(--hub-muted);
+  margin: 0 0 1em;
+}
+.post-body table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 1em;
+}
+.post-body th,
+.post-body td {
+  border: 1px solid var(--hub-border);
+  padding: 0.45rem 0.6rem;
+  text-align: left;
+}
+
+*:focus-visible {
+  outline: 2px solid var(--hub-accent);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
