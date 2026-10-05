@@ -1,9 +1,10 @@
 import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
-import { FeedSearch } from "@/components/feed-search";
+import { FeedToolbar } from "@/components/feed-toolbar";
 import { FeedTopicList } from "@/components/topic-browser";
+import { TopicSheet } from "@/components/topic-sheet";
 import { PostCard } from "@/components/post-card";
-import { ThemeToggle } from "@/components/theme-toggle";
+import { Icon } from "@/components/icons";
 import {
   loadAcknowledgementSummary,
   loadFeed,
@@ -59,34 +60,18 @@ export default async function FeedPage({ searchParams }: { searchParams: SearchP
 
   return (
     <AppShell {...shell}>
-      <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_18rem]">
-        <div className="min-w-0">
+      <div className="feed-frame grid min-h-0 gap-4 overflow-hidden xl:grid-cols-[minmax(0,1fr)_18rem]">
+        <div className="flex h-full min-h-0 min-w-0 flex-col">
           <h1 className="sr-only">ฟีด</h1>
-          <div className="flex flex-wrap items-center gap-2">
-            <nav className="flex gap-2 overflow-x-auto pb-1" aria-label="มุมมองฟีด">
-              {TABS.map((tab) => (
-                <Link
-                  key={tab.key}
-                  href={queryString({ view: tab.key })}
-                  aria-current={view === tab.key ? "page" : undefined}
-                  className={`thumb-zone inline-flex shrink-0 items-center rounded-full border px-4 text-sm font-medium ${
-                    view === tab.key
-                      ? "border-accent bg-accent text-accent-ink"
-                      : "border-line bg-surface text-muted"
-                  }`}
-                >
-                  {tab.label}
-                </Link>
-              ))}
-            </nav>
-            <div className="ms-auto flex items-center gap-2">
-              <FeedSearch />
-              <ThemeToggle compact className="shrink-0 px-3" />
-            </div>
-          </div>
+          <FeedToolbar
+            tabs={TABS.map((tab) => ({ ...tab, href: queryString({ view: tab.key }) }))}
+            view={view}
+            fullName={shell.user.fullName}
+            detail={shell.user.departmentName ?? shell.user.employeeCode}
+          />
 
           {params.topic || params.tag ? (
-            <p className="mt-3 text-sm text-muted">
+            <p className="mt-2 shrink-0 text-sm text-muted">
               กรอง: {params.topic ? `หัวข้อ ${params.topic}` : ""}{" "}
               {params.tag ? `แท็ก #${params.tag}` : ""}{" "}
               <Link href="/" className="text-accent underline">
@@ -95,11 +80,9 @@ export default async function FeedPage({ searchParams }: { searchParams: SearchP
             </p>
           ) : null}
 
-          <section className="hub-card mt-4 p-3 lg:hidden">
-            <h2 className="px-2 pb-2 text-sm font-semibold">หัวข้อ</h2>
-            <FeedTopicList topics={topics} selectedSlug={params.topic} tag={params.tag} priority={params.priority} />
-          </section>
+          <TopicSheet topics={topics} selectedSlug={params.topic} tag={params.tag} priority={params.priority} />
 
+          <div className="scroll-plain min-h-0 flex-1 overflow-y-auto overscroll-contain max-xl:[&>:first-child]:mt-0">
           {empty ? (
             <p className="mt-6 rounded-xl border border-line bg-surface p-6 text-center text-sm text-muted">
               ยังไม่มีประกาศที่ส่งถึงคุณ
@@ -137,6 +120,14 @@ export default async function FeedPage({ searchParams }: { searchParams: SearchP
               <h2 id="feed-latest" className="section-label">
                 ล่าสุด
               </h2>
+              {shell.canCompose ? (
+                <Link
+                  href="/compose"
+                  className="thumb-zone mx-auto mb-3 flex w-full max-w-xl items-center justify-center gap-2 rounded-full bg-accent px-4 text-sm font-semibold text-accent-ink"
+                >
+                  <Icon name="plus" className="h-4 w-4" /> สร้างประกาศ
+                </Link>
+              ) : null}
               <div className="grid gap-3">
                 {feed.latest.map((card) => (
                   <PostCard key={card.id} card={card} />
@@ -149,9 +140,10 @@ export default async function FeedPage({ searchParams }: { searchParams: SearchP
               ) : null}
             </section>
           ) : null}
+          </div>
         </div>
 
-        <aside className="hidden lg:block lg:space-y-4 xl:sticky xl:top-24">
+        <aside className="scroll-plain hidden h-full space-y-4 overflow-y-auto xl:block">
           <section className="glass glass-thick glass-rim relative p-4">
             <h2 className="text-sm font-semibold">สรุปการรับทราบ 30 วัน</h2>
             <div className="mt-3 flex items-center gap-4">

@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Icon } from "@/components/icons";
 
-export function FeedSearch() {
+export function FeedSearch({ className = "w-64 sm:w-80" }: { className?: string }) {
   const router = useRouter();
   const [query, setQuery] = useState("");
 
@@ -15,7 +15,7 @@ export function FeedSearch() {
   }
 
   return (
-    <form onSubmit={submit} className="relative w-64 sm:w-80" role="search">
+    <form onSubmit={submit} className={`relative min-w-0 ${className}`} role="search">
       <label className="sr-only" htmlFor="hub-search">
         ค้นหาประกาศ
       </label>

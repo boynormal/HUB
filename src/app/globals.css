@@ -69,6 +69,27 @@ body {
   min-height: 44px;
 }
 
+.scroll-plain {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+/* Feed lock: flush with the mobile bottom bar, and near the screen edge on a desktop. */
+.feed-frame {
+  --feed-nav: calc(4.125rem + env(safe-area-inset-bottom, 0px));
+  height: calc(100dvh - 1rem - var(--feed-nav));
+  margin-bottom: calc(var(--feed-nav) - 7rem);
+}
+@media (min-width: 80rem) {
+  .feed-frame {
+    height: calc(100dvh - 1.5rem);
+    margin-bottom: -1.75rem;
+  }
+}
+.scroll-plain::-webkit-scrollbar {
+  display: none;
+}
+
 .hub-card {
   background: var(--panel);
   border: 1px solid var(--hairline);

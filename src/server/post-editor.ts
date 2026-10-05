@@ -323,6 +323,36 @@ export async function softDeletePost(actor: ActorContext, postId: string, ip: st
   });
 }
 
+/// Puts a hidden post back on the feed. Existing acknowledgements stay.
+export async function restorePost(actor: ActorContext, postId: string, ip: string | null) {
+  const post = await prisma.communicationPost.findFirst({
+    where: { id: postId, deletedAt: { not: null } },
+    select: { id: true, topicId: true, authorId: true, title: true },
+  });
+  if (!post) throw new HttpError(404, "ไม่พบประกาศที่ลบแล้ว");
+  if (
+    !isCommunicationAdmin(actor) &&
+    !hasScopedPermission(actor, PERMISSIONS.delete, {
+      topicId: post.topicId,
+      ownerId: post.authorId,
+    })
+  ) {
+    throw new HttpError(403, "ไม่มีสิทธิ์นำประกาศกลับมา");
+  }
+  await prisma.communicationPost.update({
+    where: { id: postId },
+    data: { deletedAt: null, status: "PUBLISHED" },
+  });
+  await recordAudit({
+    userId: actor.userId,
+    action: AUDIT.postUpdated,
+    entity: "post",
+    entityId: postId,
+    ipAddress: ip,
+    metadata: { restored: true, title: post.title },
+  });
+}
+
 /// Powers the "ส่งถึง N คน" line in the composer before anything is published.
 export async function previewRecipients(actor: ActorContext, targets: PostInput["targets"]) {
   if (!isCommunicationAdmin(actor) && !hasScopedPermission(actor, PERMISSIONS.manageRecipients, {})) {

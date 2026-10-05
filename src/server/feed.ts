@@ -36,8 +36,11 @@ const CARD_INCLUDE = {
   tags: { include: { tag: { select: { name: true, slug: true } } } },
   versions: { where: { isCurrent: true }, select: { id: true }, take: 1 },
   attachments: {
-    where: { deletedAt: null, mimeType: { startsWith: "image/" } },
-    select: { id: true, fileName: true, postVersionId: true },
+    where: {
+      deletedAt: null,
+      OR: [{ mimeType: { startsWith: "image/" } }, { mimeType: { startsWith: "video/" } }],
+    },
+    select: { id: true, fileName: true, mimeType: true, postVersionId: true },
     orderBy: { createdAt: "asc" },
   },
   _count: { select: { comments: true, attachments: true, receipts: true } },
@@ -111,12 +114,16 @@ async function toCards(
   }));
 }
 
-function visibleImages(post: PostWithCard): Array<{ id: string; fileName: string }> {
+function visibleImages(post: PostWithCard): Array<{ id: string; fileName: string; kind: "image" | "video" }> {
   const currentId = post.versions[0]?.id ?? null;
   return post.attachments
     .filter((file) => (currentId ? file.postVersionId === currentId || file.postVersionId === null : file.postVersionId === null))
     .slice(0, 4)
-    .map((file) => ({ id: file.id, fileName: file.fileName }));
+    .map((file) => ({
+      id: file.id,
+      fileName: file.fileName,
+      kind: file.mimeType.startsWith("video/") ? "video" : "image",
+    }));
 }
 
 function filterWhere(filters: FeedFilters): Prisma.CommunicationPostWhereInput {

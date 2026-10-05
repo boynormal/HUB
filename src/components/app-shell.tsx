@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { type ReactNode } from "react";
 import { Icon } from "@/components/icons";
+import { UserChip } from "@/components/user-chip";
 
 export type ShellUser = {
   fullName: string;
@@ -36,7 +37,6 @@ export function AppShell({
   children,
 }: ShellProps) {
   const pathname = usePathname();
-  const router = useRouter();
 
   const nav: NavItem[] = [
     { href: "/", label: "ฟีด", icon: "home" },
@@ -53,7 +53,7 @@ export function AppShell({
 
   return (
     <div className="min-h-dvh text-ink">
-      <aside className="glass glass-thick glass-rim fixed inset-y-3 start-3 z-20 hidden w-60 flex-col px-3 py-4 text-ink lg:flex">
+      <aside className="glass glass-thick glass-rim fixed inset-y-3 start-3 z-20 hidden w-60 flex-col px-3 py-4 text-ink xl:flex">
         <Link href="/" className="mb-5 flex items-center gap-3 px-2">
           <span className="grid h-10 w-10 place-items-center rounded-2xl bg-accent text-base font-bold text-accent-ink">
             H
@@ -86,44 +86,20 @@ export function AppShell({
             </Link>
           ))}
         </nav>
-
-        {canCompose ? (
-          <Link
-            href="/compose"
-            className="thumb-zone mb-3 flex items-center justify-center gap-2 rounded-[10px] bg-accent text-sm font-semibold text-accent-ink"
-          >
-            <Icon name="plus" className="h-4 w-4" /> สร้างประกาศ
-          </Link>
-        ) : null}
-
-        <div className="rounded-[18px] border border-line p-3">
-          <p className="truncate text-sm font-medium">{user.fullName}</p>
-          <p className="truncate text-xs text-muted">
-            {user.departmentName ?? user.employeeCode}
-          </p>
-          <form action="/api/auth/logout" method="post" className="mt-2">
-            <button
-              type="submit"
-              className="text-xs text-muted underline"
-              onClick={async (event) => {
-                event.preventDefault();
-                await fetch("/api/auth/logout", { method: "POST" });
-                router.push("/signin");
-              }}
-            >
-              ออกจากระบบ
-            </button>
-          </form>
-        </div>
       </aside>
 
-      <div className="lg:ps-[16.75rem]">
-        <main className="px-3 pb-28 pt-4 lg:ps-0 lg:pe-4 lg:pb-10">{children}</main>
+      <div className="xl:ps-[16.75rem]">
+        {pathname === "/" ? null : (
+          <header className="hidden items-center justify-end px-4 pt-4 xl:flex">
+            <UserChip fullName={user.fullName} detail={user.departmentName ?? user.employeeCode} />
+          </header>
+        )}
+        <main className="px-3 pb-28 pt-4 xl:px-4 xl:pb-10 xl:pt-3">{children}</main>
       </div>
 
       {/* Thumb-zone navigation for the LINE in-app browser. */}
       <nav
-        className="bar safe-bottom fixed inset-x-0 bottom-0 z-20 flex gap-1 overflow-x-auto border-t px-1 lg:hidden"
+        className="bar safe-bottom fixed inset-x-0 bottom-0 z-20 grid grid-cols-6 border-t px-1 xl:hidden"
         aria-label="เมนูล่าง"
       >
         <BottomLink href="/" label="ฟีด" icon="home" active={isActive("/")} />
@@ -170,23 +146,23 @@ function BottomLink({
     <Link
       href={href}
       aria-current={active ? "page" : undefined}
-      className={`thumb-zone flex w-[4.5rem] shrink-0 flex-col items-center justify-center gap-0.5 py-1 text-[11px] font-medium ${
+      className={`thumb-zone flex min-w-0 flex-col items-center justify-center gap-0.5 px-0.5 py-1 text-center text-xs font-medium leading-tight ${
         active ? "text-accent" : "text-muted"
       }`}
     >
       <span
-        className={`relative grid h-8 w-12 place-items-center rounded-full ${
+        className={`relative grid h-8 w-10 place-items-center rounded-full ${
           active ? "bg-accent-soft" : ""
         }`}
       >
         <Icon name={icon} className="h-5 w-5" />
         {badge ? (
-          <span className="absolute -top-1 end-1 rounded-full bg-danger px-1 text-[10px] font-semibold text-white">
+          <span className="absolute -top-1 end-0 min-w-4 rounded-full bg-danger px-1 text-center text-[10px] font-semibold leading-4 text-white">
             {badge}
           </span>
         ) : null}
       </span>
-      {label}
+      <span className="line-clamp-2 w-full">{label}</span>
     </Link>
   );
 }

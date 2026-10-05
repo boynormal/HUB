@@ -30,7 +30,12 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
     if (!(await canViewPost(actor, postId))) throw new HttpError(403, "ไฟล์นี้ไม่ได้ส่งถึงคุณ");
 
     const bytes = await readAttachment(attachment.storedName);
-    const inline = new URL(request.url).searchParams.get("inline") === "1" && attachment.mimeType.startsWith("image/");
+    const playable = attachment.mimeType.startsWith("image/") || attachment.mimeType.startsWith("video/");
+    const inline = new URL(request.url).searchParams.get("inline") === "1" && playable;
+    if (inline && attachment.mimeType.startsWith("video/")) {
+      const ranged = videoRange(request, bytes, attachment.mimeType, attachment.fileName);
+      if (ranged) return ranged;
+    }
     if (!inline) {
       await prisma.communicationAttachment.update({
         where: { id: attachment.id },
@@ -52,11 +57,34 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
         "Content-Type": attachment.mimeType || "application/octet-stream",
         "Content-Disposition": `${disposition}; filename*=UTF-8''${encodeURIComponent(attachment.fileName)}`,
         "Cache-Control": inline ? "private, max-age=300" : "private, no-store",
+        ...(attachment.mimeType.startsWith("video/") ? { "Accept-Ranges": "bytes" } : {}),
       },
     });
   } catch (error) {
     return jsonError(error);
   }
+}
+
+function videoRange(request: Request, bytes: Buffer, mimeType: string, fileName: string): Response | null {
+  const header = request.headers.get("range");
+  if (!header) return null;
+  const match = /^bytes=(\d+)-(\d*)$/.exec(header);
+  if (!match) return null;
+  const start = Number(match[1]);
+  const end = match[2] ? Math.min(Number(match[2]), bytes.length - 1) : bytes.length - 1;
+  if (start > end || start >= bytes.length) return null;
+  const chunk = bytes.subarray(start, end + 1);
+  return new Response(new Uint8Array(chunk), {
+    status: 206,
+    headers: {
+      "Content-Type": mimeType,
+      "Content-Range": `bytes ${start}-${end}/${bytes.length}`,
+      "Accept-Ranges": "bytes",
+      "Content-Length": String(chunk.length),
+      "Content-Disposition": `inline; filename*=UTF-8''${encodeURIComponent(fileName)}`,
+      "Cache-Control": "private, max-age=300",
+    },
+  });
 }
 
 /// Soft delete. Only someone who can edit the post may remove a file.

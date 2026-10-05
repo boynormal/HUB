@@ -1,6 +1,6 @@
 import { prisma } from "@/server/db";
 import { HttpError } from "@/server/auth/actor";
-import type { ActorContext } from "@/server/rbac";
+import { PERMISSIONS, hasScopedPermission, isCommunicationAdmin, type ActorContext } from "@/server/rbac";
 import { canManagePostRecord, canViewPost } from "@/server/posts";
 import { receiptStatus, type ReceiptStatus } from "@/server/reminders";
 import { loadComments, type CommentNode } from "@/server/comments";
@@ -35,6 +35,7 @@ export type PostDetail = {
   }>;
   versions: StoredVersion[];
   currentVersionLabel: string;
+  deletedAt: Date | null;
   viewer: {
     status: ReceiptStatus;
     readAt: Date | null;
@@ -42,6 +43,7 @@ export type PostDetail = {
     acknowledgeNote: string | null;
     isRecipient: boolean;
     canManage: boolean;
+    canDelete: boolean;
   };
   stats: { recipients: number; read: number; acknowledged: number };
   comments: CommentNode[];
@@ -51,7 +53,7 @@ export async function loadPostDetail(actor: ActorContext, postId: string): Promi
   if (!(await canViewPost(actor, postId))) throw new HttpError(404, "ไม่พบประกาศนี้");
 
   const post = await prisma.communicationPost.findFirst({
-    where: { id: postId, deletedAt: null },
+    where: { id: postId },
     include: {
       topic: { select: { id: true, name: true, slug: true, color: true } },
       author: { select: { fullName: true, department: { select: { name: true } } } },
@@ -115,6 +117,7 @@ export async function loadPostDetail(actor: ActorContext, postId: string): Promi
     })),
     versions,
     currentVersionLabel: currentVersion?.label ?? "1.0",
+    deletedAt: post.deletedAt,
     viewer: {
       status: receiptStatus(receipt, {
         requiresConfirmation: post.requiresConfirmation,
@@ -126,6 +129,9 @@ export async function loadPostDetail(actor: ActorContext, postId: string): Promi
       acknowledgeNote: receipt?.acknowledgeNote ?? null,
       isRecipient: receipt !== null,
       canManage: canManagePostRecord(actor, post),
+      canDelete:
+        isCommunicationAdmin(actor) ||
+        hasScopedPermission(actor, PERMISSIONS.delete, { topicId: post.topicId, ownerId: post.authorId }),
     },
     stats: { recipients, read, acknowledged },
     comments,

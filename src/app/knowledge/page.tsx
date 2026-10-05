@@ -44,7 +44,7 @@ export default async function KnowledgePage({
     shellData(actor),
     prisma.communicationTopic.findMany({
       where: { isActive: true },
-      select: { slug: true, name: true },
+      select: { slug: true, name: true, color: true },
       orderBy: { name: "asc" },
     }),
     prisma.communicationPost.findMany({
@@ -75,7 +75,49 @@ export default async function KnowledgePage({
       <h1 className="text-xl font-semibold">คู่มือและเอกสาร</h1>
       <p className="mt-1 text-sm text-muted">คู่มือและเอกสารที่เผยแพร่ถึงคุณ เปิดแล้วอ่านต่อที่หน้าประกาศเดิม</p>
 
-      <form className="mt-4 flex flex-col gap-2 sm:flex-row" role="search">
+      <div className="mt-4 grid items-start gap-4 xl:grid-cols-[14rem_minmax(0,1fr)]">
+      <nav className="hub-card p-2" aria-label="หัวข้อ">
+        <p className="px-3 py-2 text-sm font-semibold">หัวข้อ</p>
+        <ul className="space-y-1">
+          <li>
+            <Link
+              href={q ? `/knowledge?q=${encodeURIComponent(q)}` : "/knowledge"}
+              aria-current={topic ? undefined : "page"}
+              className={`thumb-zone flex items-center rounded-[10px] px-3 text-sm ${
+                topic ? "text-ink hover:bg-surface-muted" : "bg-accent font-semibold text-accent-ink"
+              }`}
+            >
+              ทุกหัวข้อ
+            </Link>
+          </li>
+          {topics.map((item) => {
+            const selected = topic === item.slug;
+            const href = `/knowledge?topic=${encodeURIComponent(item.slug)}${q ? `&q=${encodeURIComponent(q)}` : ""}`;
+            return (
+              <li key={item.slug}>
+                <Link
+                  href={href}
+                  aria-current={selected ? "page" : undefined}
+                  className={`thumb-zone flex items-center gap-3 rounded-[10px] px-3 text-sm ${
+                    selected ? "bg-accent font-semibold text-accent-ink" : "text-ink hover:bg-surface-muted"
+                  }`}
+                >
+                  <span
+                    aria-hidden="true"
+                    className={`h-2 w-2 shrink-0 rounded-full ${selected ? "bg-accent-ink" : ""}`}
+                    style={selected ? undefined : { backgroundColor: item.color ?? "var(--hub-muted)" }}
+                  />
+                  <span className="min-w-0 flex-1 truncate">{item.name}</span>
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+      </nav>
+
+      <div className="min-w-0">
+      <form className="flex flex-col gap-2 sm:flex-row" role="search">
+        {topic ? <input type="hidden" name="topic" value={topic} /> : null}
         <label className="sr-only" htmlFor="knowledge-q">
           ค้นหาชื่อหรือเนื้อหา
         </label>
@@ -86,22 +128,6 @@ export default async function KnowledgePage({
           placeholder="ค้นหาชื่อหรือเนื้อหา"
           className="thumb-zone w-full rounded-full border border-line bg-surface px-4 text-[15px]"
         />
-        <label className="sr-only" htmlFor="knowledge-topic">
-          หัวข้อ
-        </label>
-        <select
-          id="knowledge-topic"
-          name="topic"
-          defaultValue={topic}
-          className="thumb-zone rounded-full border border-line bg-surface px-3 text-[15px]"
-        >
-          <option value="">ทุกหัวข้อ</option>
-          {topics.map((item) => (
-            <option key={item.slug} value={item.slug}>
-              {item.name}
-            </option>
-          ))}
-        </select>
         <button
           type="submit"
           className="thumb-zone rounded-full bg-accent px-4 text-sm font-semibold text-accent-ink"
@@ -164,6 +190,8 @@ export default async function KnowledgePage({
           })}
         </ul>
       )}
+      </div>
+      </div>
     </AppShell>
   );
 }

@@ -19,15 +19,17 @@ export default async function SettingsPage() {
       prisma.communicationTag.count({ where: { isActive: true } }),
       prisma.communicationPost.count({ where: { deletedAt: null, status: "PUBLISHED" } }),
       prisma.communicationPost.count({ where: { deletedAt: null, status: "SCHEDULED" } }),
+      prisma.communicationPost.count({ where: { deletedAt: { not: null } } }),
     ]),
   ]);
-  const [users, active, lineLinked, topics, tags, published, scheduled] = counts;
+  const [users, active, lineLinked, topics, tags, published, scheduled, deleted] = counts;
 
   const links = [
     { href: "/settings/users", label: "พนักงานและรหัสเชิญ", hint: `${users} คน` },
     { href: "/settings/departments", label: "ผู้จัดการแผนก", hint: "หนึ่งคนต่อแผนก" },
     { href: "/settings/topics", label: "หัวข้อ", hint: `${topics} หัวข้อ` },
     { href: "/settings/tags", label: "แท็ก", hint: `${tags} แท็ก` },
+    { href: "/settings/deleted", label: "ประกาศที่ลบแล้ว", hint: `${deleted} รายการ` },
     { href: "/reports", label: "รายงานการรับทราบ", hint: "" },
     ...(isSystemAdmin(actor)
       ? [{ href: "/settings/audit", label: "บันทึกการใช้งาน", hint: "เฉพาะผู้ดูแลระบบ" }]

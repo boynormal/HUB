@@ -47,7 +47,7 @@ export type FeedCard = {
   tags: Array<{ name: string; slug: string }>;
   commentCount: number;
   attachmentCount: number;
-  images: Array<{ id: string; fileName: string }>;
+  images: Array<{ id: string; fileName: string; kind: "image" | "video" }>;
   readCount: number;
   acknowledgedCount: number;
   recipientCount: number;
@@ -57,16 +57,18 @@ export type FeedCard = {
 /// A post an employee may open: they hold a receipt, or they manage the content.
 export async function canViewPost(actor: ActorContext, postId: string): Promise<boolean> {
   const post = await prisma.communicationPost.findFirst({
-    where: { id: postId, deletedAt: null },
+    where: { id: postId },
     select: {
       id: true,
       status: true,
+      deletedAt: true,
       topicId: true,
       authorId: true,
       targets: { select: { targetType: true, targetId: true } },
     },
   });
   if (!post) return false;
+  if (post.deletedAt) return isCommunicationAdmin(actor);
   if (canManagePostRecord(actor, post)) return true;
   if (!VISIBLE_STATUSES.includes(post.status as (typeof VISIBLE_STATUSES)[number])) return false;
 

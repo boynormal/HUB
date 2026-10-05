@@ -3,6 +3,7 @@ import type { FeedCard } from "@/server/posts";
 import { deadlineLabel, formatRelativeThai } from "@/server/time";
 import { PriorityBadge, ReceiptBadge, TypeBadge } from "@/components/badges";
 import { Icon } from "@/components/icons";
+import { ShareLinkButton } from "@/components/share-link-button";
 
 /// Feed cards stay short: the summary here, the full text on the detail screen.
 export function PostCard({ card }: { card: FeedCard }) {
@@ -12,7 +13,7 @@ export function PostCard({ card }: { card: FeedCard }) {
   const showSummary = summary.length > 0 && summary !== card.title.trim();
   return (
     <article
-      className={`hub-card overflow-hidden ${
+      className={`hub-card mx-auto w-full max-w-xl overflow-hidden ${
         card.viewerStatus === "OVERDUE" ? "ring-1 ring-[var(--hub-red)]" : ""
       }`}
     >
@@ -39,45 +40,54 @@ export function PostCard({ card }: { card: FeedCard }) {
           <time className="shrink-0 text-xs text-muted">{formatRelativeThai(card.publishedAt)}</time>
         </div>
 
-        <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-start">
-          <div className="min-w-0 flex-1">
-            <h2 className="text-lg font-semibold leading-snug">
-              <Link href={`/posts/${card.id}`} className="hover:text-accent">
-                {card.title}
+        <h2 className="mt-3 text-lg font-semibold leading-snug">
+          <Link href={`/posts/${card.id}`} className="hover:text-accent">
+            {card.title}
+          </Link>
+        </h2>
+        <p className="mt-1 text-xs text-muted">{card.authorName}</p>
+        {showSummary ? (
+          <p className="mt-2 line-clamp-4 whitespace-pre-wrap text-[15px] leading-relaxed">{summary}</p>
+        ) : null}
+        {card.tags.length > 0 ? (
+          <div className="mt-3 flex flex-wrap gap-2">
+            {card.tags.map((tag) => (
+              <Link
+                key={tag.slug}
+                href={`/?tag=${tag.slug}`}
+                className="rounded-full bg-surface-muted px-2.5 py-0.5 text-xs text-muted hover:text-ink"
+              >
+                #{tag.name}
               </Link>
-            </h2>
-            <p className="mt-1 text-xs text-muted">{card.authorName}</p>
-            {showSummary ? (
-              <p className="mt-2 line-clamp-4 whitespace-pre-wrap text-[15px] leading-relaxed text-muted">{summary}</p>
-            ) : null}
-            {card.tags.length > 0 ? (
-              <div className="mt-3 flex flex-wrap gap-2">
-                {card.tags.map((tag) => (
-                  <Link
-                    key={tag.slug}
-                    href={`/?tag=${tag.slug}`}
-                    className="rounded-full bg-surface-muted px-2.5 py-0.5 text-xs text-muted hover:text-ink"
-                  >
-                    #{tag.name}
-                  </Link>
-                ))}
-              </div>
-            ) : null}
+            ))}
           </div>
-          {card.images.length > 0 ? (
-            <div className="flex shrink-0 flex-wrap gap-2 sm:w-40 sm:flex-col">
-              {card.images.map((image) => (
-                <img
-                  key={image.id}
-                  src={`/api/attachments/${image.id}?inline=1`}
-                  alt={image.fileName}
-                  className="block h-auto max-h-40 w-auto max-w-full rounded-xl object-contain sm:w-40"
-                />
-              ))}
-            </div>
-          ) : null}
-        </div>
+        ) : null}
       </div>
+      {card.images.length > 0 ? (
+        <div className="mt-3 bg-surface-muted">
+          {card.images.map((image) =>
+            image.kind === "video" ? (
+              <video
+                key={image.id}
+                src={`/api/attachments/${image.id}?inline=1`}
+                controls
+                playsInline
+                preload="metadata"
+                className="max-h-[32rem] w-full bg-black"
+              >
+                {image.fileName}
+              </video>
+            ) : (
+              <img
+                key={image.id}
+                src={`/api/attachments/${image.id}?inline=1`}
+                alt={image.fileName}
+                className="max-h-[32rem] w-full object-contain"
+              />
+            ),
+          )}
+        </div>
+      ) : null}
 
       <div className="mt-3 flex flex-col gap-3 border-t border-line bg-surface-muted px-4 py-3 sm:flex-row sm:items-center">
         <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2 text-xs text-muted">
@@ -96,6 +106,7 @@ export function PostCard({ card }: { card: FeedCard }) {
             </span>
           ) : null}
         </div>
+        <ShareLinkButton path={`/posts/${card.id}`} title={card.title} />
         <Link
           href={`/posts/${card.id}`}
           className={`thumb-zone inline-flex w-full items-center justify-center rounded-full px-4 text-sm font-semibold sm:w-auto ${
