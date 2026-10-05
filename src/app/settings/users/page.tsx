@@ -66,9 +66,9 @@ export default async function UsersPage({
         </Link>
       </nav>
 
-      <h1 className="text-xl font-semibold">พนักงานและรหัสเชิญ</h1>
+      <h1 className="text-xl font-semibold">พนักงาน</h1>
       <p className="mt-1 text-sm text-muted">
-        แก้ชื่อ สาขา แผนก ตำแหน่ง และสถานะได้ กดออกรหัสเชิญใหม่เมื่อต้องส่งรหัสให้พนักงานอีกครั้ง
+        คนที่เข้าด้วย LINE ครั้งแรกอยู่สถานะรออนุมัติ กดอนุมัติแล้วใส่ชื่อ สาขา แผนก และตำแหน่ง
       </p>
 
       <form className="mt-5" role="search">

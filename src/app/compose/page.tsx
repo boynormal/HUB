@@ -105,6 +105,7 @@ function toDraft(detail: PostDetail): ComposerDraft {
       id: file.id,
       fileName: file.fileName,
       fileSize: file.fileSize,
+      mimeType: file.mimeType,
     })),
   };
 }

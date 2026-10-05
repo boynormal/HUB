@@ -1,3 +1,5 @@
+import { randomBytes } from "node:crypto";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/server/db";
 import { AUDIT, recordAudit } from "@/server/audit";
 import { HttpError } from "@/server/auth/actor";
@@ -7,7 +9,7 @@ import type { LineIdentity } from "@/server/auth/line";
 
 export type SignInOutcome =
   | { state: "signed_in"; userId: string; fullName: string }
-  | { state: "needs_link"; lineUserId: string; displayName: string | null };
+  | { state: "pending"; userId: string; fullName: string };
 
 async function issueSession(user: {
   id: string;
@@ -22,23 +24,18 @@ async function issueSession(user: {
   await prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });
 }
 
-/// A LINE account that is already linked signs in. An unknown account is sent to the link screen
-/// instead of being created, because employees are only ever created by an admin.
+/// A known LINE account signs in. A new one is created as INVITED and waits for an admin.
 export async function signInWithLine(
   identity: LineIdentity,
   ip: string | null,
 ): Promise<SignInOutcome> {
-  const user = await prisma.user.findUnique({
+  let user = await prisma.user.findUnique({
     where: { lineUserId: identity.lineUserId },
     select: { id: true, employeeCode: true, fullName: true, status: true, avatarUrl: true },
   });
 
   if (!user) {
-    return {
-      state: "needs_link",
-      lineUserId: identity.lineUserId,
-      displayName: identity.displayName,
-    };
+    user = await createInvitedLineUser(identity, ip);
   }
   if (user.status === "SUSPENDED") {
     await recordAudit({
@@ -68,7 +65,57 @@ export async function signInWithLine(
     ipAddress: ip,
     metadata: { method: "line" },
   });
+  if (user.status === "INVITED") {
+    return { state: "pending", userId: user.id, fullName: user.fullName };
+  }
   return { state: "signed_in", userId: user.id, fullName: user.fullName };
+}
+
+async function createInvitedLineUser(identity: LineIdentity, ip: string | null) {
+  const company = await prisma.company.findFirst({
+    select: { id: true },
+    orderBy: { createdAt: "asc" },
+  });
+  if (!company) throw new HttpError(503, "ยังไม่ได้ตั้งค่าบริษัท");
+
+  const fullName = identity.displayName?.trim() || "ผู้ใช้ LINE";
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      const created = await prisma.user.create({
+        data: {
+          employeeCode: `line-${randomBytes(4).toString("hex")}`,
+          fullName,
+          companyId: company.id,
+          status: "INVITED",
+          lineUserId: identity.lineUserId,
+          lineLinkedAt: new Date(),
+          avatarUrl: identity.pictureUrl,
+        },
+        select: { id: true, employeeCode: true, fullName: true, status: true, avatarUrl: true },
+      });
+      await ensureEmployeeRole(created.id);
+      await recordAudit({
+        userId: created.id,
+        action: AUDIT.userCreated,
+        entity: "user",
+        entityId: created.id,
+        ipAddress: ip,
+        metadata: { source: "line", employeeCode: created.employeeCode },
+      });
+      return created;
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+        const existing = await prisma.user.findUnique({
+          where: { lineUserId: identity.lineUserId },
+          select: { id: true, employeeCode: true, fullName: true, status: true, avatarUrl: true },
+        });
+        if (existing) return existing;
+        continue;
+      }
+      throw error;
+    }
+  }
+  throw new HttpError(500, "สร้างบัญชีจาก LINE ไม่สำเร็จ");
 }
 
 /// Links a LINE account to an employee record using the employee code and the printed invite code.

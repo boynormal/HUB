@@ -154,7 +154,7 @@ export default async function PostPage({ params }: { params: Promise<{ id: strin
         ) : null}
 
         {post.attachments.length > 0 ? (
-          <section className="mt-5" aria-labelledby="attachments-heading">
+          <section className="mt-5 min-w-0" aria-labelledby="attachments-heading">
             <h2 id="attachments-heading" className="text-sm font-semibold">
               ไฟล์แนบ ({post.attachments.length})
             </h2>

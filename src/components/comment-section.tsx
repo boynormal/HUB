@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { mentionTokensToHtml, mentionsToPlainText, restoreMentions } from "@/server/mentions";
 import { formatRelativeThai } from "@/server/time";
 
 export type CommentView = {
@@ -16,7 +17,13 @@ export type CommentView = {
   replies: CommentView[];
 };
 
-type MentionResult = { kind: string; id: string; label: string; hint: string };
+type MentionResult = {
+  kind: string;
+  id: string;
+  label: string;
+  hint: string;
+  avatarUrl?: string | null;
+};
 
 const EMOJIS = [
   { glyph: "👍", label: "ถูกใจ" },
@@ -125,7 +132,7 @@ function CommentItem({
         </div>
         <div
           className="post-body mt-2 text-[15px]"
-          dangerouslySetInnerHTML={{ __html: comment.content }}
+          dangerouslySetInnerHTML={{ __html: mentionTokensToHtml(comment.content) }}
         />
         <div className="mt-2 flex flex-wrap gap-2">
           {allowComments && depth < 2 ? (
@@ -179,6 +186,27 @@ function CommentItem({
   );
 }
 
+function MentionFace({ result }: { result: MentionResult }) {
+  if (result.kind === "all") {
+    return (
+      <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[#4a90e2] text-lg font-semibold text-white">
+        @
+      </span>
+    );
+  }
+  if (result.avatarUrl && result.avatarUrl.startsWith("http")) {
+    return (
+      <img src={result.avatarUrl} alt="" className="h-9 w-9 shrink-0 rounded-full object-cover" />
+    );
+  }
+  const initial = result.label.trim().slice(0, 1) || "•";
+  return (
+    <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-accent-soft text-sm font-semibold text-accent">
+      {initial}
+    </span>
+  );
+}
+
 function CommentForm({
   postId,
   parentId,
@@ -195,16 +223,21 @@ function CommentForm({
   const [mentions, setMentions] = useState<MentionResult[]>([]);
 
   /// Mentions are inserted as tokens, so typing plain text never notifies anyone.
-  async function lookupMentions(value: string) {
-    const match = /@([^\s@]{1,30})$/.exec(value);
+  async function lookupMentions(value: string, cursor: number) {
+    const match = /@([^\s@]{0,30})$/.exec(value.slice(0, cursor));
     if (!match) {
       setMentions([]);
       return;
     }
-    const response = await fetch(`/api/mentions?q=${encodeURIComponent(match[1])}`);
-    if (!response.ok) return;
+    const response = await fetch(
+      `/api/mentions?postId=${encodeURIComponent(postId)}&q=${encodeURIComponent(match[1])}`,
+    );
+    if (!response.ok) {
+      setMentions([]);
+      return;
+    }
     const data = (await response.json()) as { results: MentionResult[] };
-    setMentions(data.results.slice(0, 6));
+    setMentions(data.results.slice(0, 8));
   }
 
   function insertEmoji(glyph: string) {
@@ -221,9 +254,18 @@ function CommentForm({
   }
 
   function insertMention(result: MentionResult) {
-    setContent((current) =>
-      current.replace(/@([^\s@]{1,30})$/, `@[${result.label}](${result.kind}:${result.id}) `),
-    );
+    setContent((current) => {
+      const next = current.replace(
+        /@([^\s@]{0,30})$/,
+        `@[${result.label}](${result.kind}:${result.id}) `,
+      );
+      const cursor = mentionsToPlainText(next).length;
+      requestAnimationFrame(() => {
+        field.current?.focus();
+        field.current?.setSelectionRange(cursor, cursor);
+      });
+      return next;
+    });
     setMentions([]);
   }
 
@@ -267,38 +309,48 @@ function CommentForm({
           </button>
         ))}
       </div>
-      <label className="sr-only" htmlFor={`comment-${parentId ?? "root"}`}>
-        เขียนความคิดเห็น
-      </label>
-      <textarea
-        ref={field}
-        id={`comment-${parentId ?? "root"}`}
-        value={content}
-        onChange={(event) => {
-          setContent(event.target.value);
-          void lookupMentions(event.target.value);
-        }}
-        rows={parentId ? 2 : 3}
-        maxLength={4000}
-        placeholder={parentId ? "ตอบกลับ…" : "เขียนความคิดเห็น พิมพ์ @ เพื่อกล่าวถึงคน"}
-        className="w-full rounded-lg border border-line bg-surface p-3 text-[15px]"
-      />
-      {mentions.length > 0 ? (
-        <ul className="mt-1 divide-y divide-line overflow-hidden rounded-lg border border-line bg-surface">
-          {mentions.map((result) => (
-            <li key={`${result.kind}-${result.id}`}>
-              <button
-                type="button"
-                onClick={() => insertMention(result)}
-                className="thumb-zone flex w-full items-center gap-2 px-3 text-start text-sm"
-              >
-                <span className="font-medium">{result.label}</span>
-                <span className="text-xs text-muted">{result.hint}</span>
-              </button>
-            </li>
-          ))}
-        </ul>
-      ) : null}
+      <div className="relative">
+        <label className="sr-only" htmlFor={`comment-${parentId ?? "root"}`}>
+          เขียนความคิดเห็น
+        </label>
+        <textarea
+          ref={field}
+          id={`comment-${parentId ?? "root"}`}
+          value={mentionsToPlainText(content)}
+          onChange={(event) => {
+            const plain = event.target.value;
+            const cursor = event.target.selectionStart ?? plain.length;
+            setContent((current) => restoreMentions(plain, current));
+            void lookupMentions(plain, cursor);
+          }}
+          rows={parentId ? 2 : 3}
+          maxLength={4000}
+          placeholder={parentId ? "ตอบกลับ…" : "เขียนความคิดเห็น พิมพ์ @ เพื่อกล่าวถึงคน"}
+          className="w-full rounded-lg border border-line bg-surface p-3 text-[15px]"
+        />
+        {mentions.length > 0 ? (
+          <ul
+            className="absolute bottom-[calc(100%+0.35rem)] start-3 z-30 max-h-60 w-60 overflow-y-auto rounded-xl border border-line bg-surface py-1 shadow-[var(--shadow-float)]"
+            role="listbox"
+            aria-label="เลือกคนที่จะกล่าวถึง"
+          >
+            {mentions.map((result) => (
+              <li key={`${result.kind}-${result.id}`}>
+                <button
+                  type="button"
+                  role="option"
+                  onMouseDown={(event) => event.preventDefault()}
+                  onClick={() => insertMention(result)}
+                  className="flex w-full items-center gap-3 px-3 py-2 text-start hover:bg-surface-muted"
+                >
+                  <MentionFace result={result} />
+                  <span className="min-w-0 truncate text-base">{result.label}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        ) : null}
+      </div>
       {error ? (
         <p role="alert" className="mt-1 text-sm text-danger">
           {error}

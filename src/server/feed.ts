@@ -78,11 +78,19 @@ async function toCards(
     where: { postId: { in: postIds }, acknowledgedAt: { not: null } },
     _count: { _all: true },
   });
+  const fileCounts = await prisma.communicationAttachment.groupBy({
+    by: ["postId"],
+    where: { postId: { in: postIds }, deletedAt: null },
+    _count: { _all: true },
+  });
 
   const receiptByPost = new Map(receipts.map((receipt) => [receipt.postId, receipt]));
   const totalByPost = new Map(stats.map((row) => [row.postId, row._count._all]));
   const readByPost = new Map(readCounts.map((row) => [row.postId, row._count._all]));
   const ackByPost = new Map(ackCounts.map((row) => [row.postId, row._count._all]));
+  const filesByPost = new Map(
+    fileCounts.flatMap((row) => (row.postId ? [[row.postId, row._count._all] as const] : [])),
+  );
 
   return posts.map((post) => ({
     id: post.id,
@@ -101,7 +109,7 @@ async function toCards(
     authorName: post.author.fullName,
     tags: post.tags.map((link) => link.tag),
     commentCount: post._count.comments,
-    attachmentCount: post._count.attachments,
+    attachmentCount: filesByPost.get(post.id) ?? 0,
     images: visibleImages(post),
     readCount: readByPost.get(post.id) ?? 0,
     acknowledgedCount: ackByPost.get(post.id) ?? 0,
@@ -118,7 +126,6 @@ function visibleImages(post: PostWithCard): Array<{ id: string; fileName: string
   const currentId = post.versions[0]?.id ?? null;
   return post.attachments
     .filter((file) => (currentId ? file.postVersionId === currentId || file.postVersionId === null : file.postVersionId === null))
-    .slice(0, 4)
     .map((file) => ({
       id: file.id,
       fileName: file.fileName,

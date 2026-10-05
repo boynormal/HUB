@@ -18,7 +18,7 @@ const anuphan = Anuphan({
 
 export const metadata: Metadata = {
   title: "Hub ศูนย์กลางการสื่อสาร",
-  description: "ศูนย์กลางการสื่อสารองค์กร เอส เจริญชัย กรุ๊ป",
+  description: "ศูนย์กลางการสื่อสารองค์กร ส.เจริญชัย รีไซเคิล",
 };
 
 export const viewport: Viewport = {

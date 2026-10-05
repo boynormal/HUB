@@ -16,17 +16,22 @@ export default async function KnowledgePage({
   const actor = await requirePageActor();
   const { q = "", topic = "" } = await searchParams;
   const term = q.trim();
+  const visible = isCommunicationAdmin(actor)
+    ? {}
+    : {
+        OR: [
+          { receipts: { some: { userId: actor.userId } } },
+          ...(actor.managedTopicIds.length > 0 ? [{ topicId: { in: actor.managedTopicIds } }] : []),
+        ],
+      };
+  const manualWhere = {
+    deletedAt: null,
+    status: "PUBLISHED" as const,
+    postType: { in: [...MANUAL_TYPES] },
+    ...visible,
+  };
   const filters = [
-    ...(isCommunicationAdmin(actor)
-      ? []
-      : [
-          {
-            OR: [
-              { receipts: { some: { userId: actor.userId } } },
-              ...(actor.managedTopicIds.length > 0 ? [{ topicId: { in: actor.managedTopicIds } }] : []),
-            ],
-          },
-        ]),
+    ...(isCommunicationAdmin(actor) ? [] : [visible]),
     ...(term
       ? [
           {
@@ -44,7 +49,12 @@ export default async function KnowledgePage({
     shellData(actor),
     prisma.communicationTopic.findMany({
       where: { isActive: true },
-      select: { slug: true, name: true, color: true },
+      select: {
+        slug: true,
+        name: true,
+        color: true,
+        _count: { select: { posts: { where: manualWhere } } },
+      },
       orderBy: { name: "asc" },
     }),
     prisma.communicationPost.findMany({
@@ -83,11 +93,14 @@ export default async function KnowledgePage({
             <Link
               href={q ? `/knowledge?q=${encodeURIComponent(q)}` : "/knowledge"}
               aria-current={topic ? undefined : "page"}
-              className={`thumb-zone flex items-center rounded-[10px] px-3 text-sm ${
+              className={`thumb-zone flex items-center gap-3 rounded-[10px] px-3 text-sm ${
                 topic ? "text-ink hover:bg-surface-muted" : "bg-accent font-semibold text-accent-ink"
               }`}
             >
-              ทุกหัวข้อ
+              <span className="min-w-0 flex-1 truncate">ทุกหัวข้อ</span>
+              <span className={topic ? "text-xs text-muted" : "text-xs text-accent-ink"}>
+                {topics.reduce((sum, item) => sum + item._count.posts, 0)}
+              </span>
             </Link>
           </li>
           {topics.map((item) => {
@@ -108,6 +121,7 @@ export default async function KnowledgePage({
                     style={selected ? undefined : { backgroundColor: item.color ?? "var(--hub-muted)" }}
                   />
                   <span className="min-w-0 flex-1 truncate">{item.name}</span>
+                  <span className={selected ? "text-xs text-accent-ink" : "text-xs text-muted"}>{item._count.posts}</span>
                 </Link>
               </li>
             );

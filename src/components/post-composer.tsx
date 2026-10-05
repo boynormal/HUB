@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 type Option = { id: string; name: string };
@@ -8,7 +8,7 @@ type Topic = Option & { slug: string; color: string | null };
 
 type TargetRule = { targetType: string; targetId: string | null };
 
-export type ComposerAttachment = { id: string; fileName: string; fileSize: number };
+export type ComposerAttachment = { id: string; fileName: string; fileSize: number; mimeType?: string };
 
 export type ComposerDraft = {
   id: string;
@@ -775,44 +775,133 @@ function FilePicker({
       {saved.length + pending.length === 0 ? (
         <p className="mt-3 text-sm text-muted">ยังไม่มีไฟล์แนบ</p>
       ) : (
-        <ul className="mt-3 space-y-2">
-          {saved.map((file) => (
-            <li key={file.id} className="flex items-center gap-3 rounded-xl border border-line bg-surface px-3">
-              <span className="min-w-0 flex-1 py-2">
-                <span className="block truncate text-sm font-medium">{file.fileName}</span>
-                <span className="block text-xs text-muted">{formatBytes(file.fileSize)}</span>
-              </span>
-              <button
-                type="button"
-                className="thumb-zone shrink-0 rounded-full px-3 text-sm font-medium text-danger"
-                onClick={() => onRemoveSaved(file.id)}
-              >
-                ลบ
-              </button>
-            </li>
-          ))}
-          {pending.map((file, index) => (
-            <li
-              key={`${file.name}-${index}`}
-              className="flex items-center gap-3 rounded-xl border border-line bg-surface px-3"
-            >
-              <span className="min-w-0 flex-1 py-2">
-                <span className="block truncate text-sm font-medium">{file.name}</span>
-                <span className="block text-xs text-muted">{formatBytes(file.size)} · รออัปโหลด</span>
-              </span>
-              <button
-                type="button"
-                className="thumb-zone shrink-0 rounded-full px-3 text-sm font-medium text-danger"
-                onClick={() => onRemovePending(index)}
-              >
-                เอาออก
-              </button>
-            </li>
-          ))}
-        </ul>
+        <>
+          {saved.some(isVisual) || pending.some((file) => isVisualType(file.type)) ? (
+            <ul className="scroll-plain mt-3 flex w-full min-w-0 max-w-full flex-nowrap gap-2 overflow-x-auto overscroll-x-contain">
+              {saved.filter(isVisual).map((file) => (
+                <li key={file.id} className="relative h-36 w-36 shrink-0">
+                  <AttachmentPreview
+                    name={file.fileName}
+                    mimeType={file.mimeType}
+                    src={`/api/attachments/${file.id}?inline=1`}
+                  />
+                  <button
+                    type="button"
+                    className="absolute end-1 top-1 rounded-full bg-black/70 px-2 py-1 text-xs font-medium text-white"
+                    onClick={() => onRemoveSaved(file.id)}
+                  >
+                    ลบ
+                  </button>
+                </li>
+              ))}
+              {pending.map((file, index) =>
+                isVisualType(file.type) ? (
+                  <li key={`${file.name}-${index}`} className="relative h-36 w-36 shrink-0">
+                    <PendingPreview file={file} />
+                    <button
+                      type="button"
+                      className="absolute end-1 top-1 rounded-full bg-black/70 px-2 py-1 text-xs font-medium text-white"
+                      onClick={() => onRemovePending(index)}
+                    >
+                      ลบ
+                    </button>
+                  </li>
+                ) : null,
+              )}
+            </ul>
+          ) : null}
+          {saved.some((file) => !isVisual(file)) || pending.some((file) => !isVisualType(file.type)) ? (
+          <ul className="mt-3 space-y-2">
+            {saved.filter((file) => !isVisual(file)).map((file) => (
+              <li key={file.id} className="flex items-center gap-3 rounded-xl border border-line bg-surface px-3">
+                <span className="min-w-0 flex-1 py-2">
+                  <span className="block truncate text-sm font-medium">{file.fileName}</span>
+                  <span className="block text-xs text-muted">{formatBytes(file.fileSize)}</span>
+                </span>
+                <button
+                  type="button"
+                  className="thumb-zone shrink-0 rounded-full px-3 text-sm font-medium text-danger"
+                  onClick={() => onRemoveSaved(file.id)}
+                >
+                  ลบ
+                </button>
+              </li>
+            ))}
+            {pending.map((file, index) =>
+              isVisualType(file.type) ? null : (
+                <li
+                  key={`${file.name}-${index}`}
+                  className="flex items-center gap-3 rounded-xl border border-line bg-surface px-3"
+                >
+                  <span className="min-w-0 flex-1 py-2">
+                    <span className="block truncate text-sm font-medium">{file.name}</span>
+                    <span className="block text-xs text-muted">{formatBytes(file.size)} · รออัปโหลด</span>
+                  </span>
+                  <button
+                    type="button"
+                    className="thumb-zone shrink-0 rounded-full px-3 text-sm font-medium text-danger"
+                    onClick={() => onRemovePending(index)}
+                  >
+                    เอาออก
+                  </button>
+                </li>
+              ),
+            )}
+          </ul>
+          ) : null}
+        </>
       )}
     </fieldset>
   );
+}
+
+function AttachmentPreview({
+  name,
+  mimeType,
+  src,
+}: {
+  name: string;
+  mimeType?: string;
+  src: string | null;
+}) {
+  if (!src) return null;
+  if (mimeType?.startsWith("video/")) {
+    return (
+      <video
+        src={src}
+        muted
+        playsInline
+        preload="metadata"
+        className="h-full w-full rounded-xl border border-line bg-black object-contain"
+      />
+    );
+  }
+  return (
+    <img src={src} alt={name} className="h-full w-full rounded-xl border border-line bg-surface-muted object-contain" />
+  );
+}
+
+function isVisual(file: ComposerAttachment) {
+  return isVisualType(file.mimeType ?? "");
+}
+
+function isVisualType(mimeType: string) {
+  return mimeType.startsWith("image/") || mimeType.startsWith("video/");
+}
+
+function PendingPreview({ file }: { file: File }) {
+  const [url, setUrl] = useState<string | null>(null);
+  const visual = file.type.startsWith("image/") || file.type.startsWith("video/");
+
+  useEffect(() => {
+    if (!visual) return;
+    const next = URL.createObjectURL(file);
+    setUrl(next);
+    return () => URL.revokeObjectURL(next);
+  }, [file, visual]);
+
+  if (!url) return null;
+  return <AttachmentPreview name={file.name} mimeType={file.type} src={url} />;
 }
 
 function formatBytes(bytes: number): string {

@@ -16,10 +16,14 @@ type Employee = {
 };
 
 const STATUS_LABEL = {
-  INVITED: "รอผูก LINE",
+  INVITED: "รออนุมัติ",
   ACTIVE: "ใช้งาน",
   SUSPENDED: "ระงับ",
 } as const;
+
+function isProvisionalCode(employeeCode: string) {
+  return employeeCode.startsWith("line-");
+}
 
 export function EmployeeEditor({
   employees,
@@ -36,16 +40,27 @@ export function EmployeeEditor({
   const [openId, setOpenId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [issued, setIssued] = useState<{ id: string; code: string } | null>(null);
 
-  async function save(employee: Employee, next: Omit<Employee, "id" | "employeeCode" | "lineLinked">) {
+  async function save(
+    employee: Employee,
+    next: Omit<Employee, "id" | "lineLinked">,
+  ) {
     setBusy(true);
     setError(null);
     try {
       const response = await fetch(`/api/users/${employee.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(next),
+        body: JSON.stringify({
+          fullName: next.fullName,
+          branchId: next.branchId,
+          departmentId: next.departmentId,
+          positionId: next.positionId,
+          status: next.status,
+          ...(isProvisionalCode(employee.employeeCode) && next.employeeCode !== employee.employeeCode
+            ? { employeeCode: next.employeeCode }
+            : {}),
+        }),
       });
       const data = (await response.json()) as { error?: string };
       if (!response.ok) {
@@ -54,24 +69,6 @@ export function EmployeeEditor({
       }
       setOpenId(null);
       router.refresh();
-    } catch {
-      setError("เชื่อมต่อไม่ได้ ลองอีกครั้ง");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function reissue(employee: Employee) {
-    setBusy(true);
-    setError(null);
-    try {
-      const response = await fetch(`/api/users/${employee.id}/invite`, { method: "POST" });
-      const data = (await response.json()) as { error?: string; inviteCode?: string };
-      if (!response.ok || !data.inviteCode) {
-        setError(data.error ?? "ออกรหัสเชิญไม่สำเร็จ");
-        return;
-      }
-      setIssued({ id: employee.id, code: data.inviteCode });
     } catch {
       setError("เชื่อมต่อไม่ได้ ลองอีกครั้ง");
     } finally {
@@ -93,33 +90,28 @@ export function EmployeeEditor({
               <div className="min-w-0 flex-1">
                 <p className="font-medium">{employee.fullName}</p>
                 <p className="text-xs text-muted">
-                  {employee.employeeCode} · {STATUS_LABEL[employee.status]} ·{" "}
-                  {employee.lineLinked ? "ผูก LINE แล้ว" : "ยังไม่ผูก LINE"}
+                  {isProvisionalCode(employee.employeeCode) ? "รอใส่รหัสพนักงาน" : employee.employeeCode} ·{" "}
+                  {STATUS_LABEL[employee.status]} · {employee.lineLinked ? "ผูก LINE แล้ว" : "ยังไม่ผูก LINE"}
                 </p>
               </div>
-              <button
-                type="button"
-                disabled={busy}
-                onClick={() => reissue(employee)}
-                className="thumb-zone rounded-full border border-line px-4 text-sm font-medium disabled:opacity-60"
-              >
-                ออกรหัสเชิญใหม่
-              </button>
-              <button
-                type="button"
-                onClick={() => setOpenId(openId === employee.id ? null : employee.id)}
-                className="thumb-zone rounded-full border border-line px-4 text-sm font-medium"
-              >
-                {openId === employee.id ? "ปิด" : "แก้ไข"}
-              </button>
+              {employee.status === "INVITED" ? (
+                <button
+                  type="button"
+                  onClick={() => setOpenId(openId === employee.id ? null : employee.id)}
+                  className="thumb-zone rounded-full bg-accent px-4 text-sm font-semibold text-accent-ink"
+                >
+                  {openId === employee.id ? "ปิด" : "อนุมัติ"}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setOpenId(openId === employee.id ? null : employee.id)}
+                  className="thumb-zone rounded-full border border-line px-4 text-sm font-medium"
+                >
+                  {openId === employee.id ? "ปิด" : "แก้ไข"}
+                </button>
+              )}
             </div>
-            {issued?.id === employee.id ? (
-              <p className="mt-3 rounded-lg bg-surface-muted p-3 text-sm">
-                รหัสเชิญใหม่ของ {employee.fullName}:{" "}
-                <span className="font-semibold tracking-wide">{issued.code}</span>
-                <span className="mt-1 block text-xs text-muted">แสดงครั้งเดียว จดไว้ก่อนปิดหน้านี้</span>
-              </p>
-            ) : null}
             {openId === employee.id ? (
               <EditForm
                 employee={employee}
@@ -127,6 +119,7 @@ export function EmployeeEditor({
                 departments={departments}
                 positions={positions}
                 busy={busy}
+                approving={employee.status === "INVITED"}
                 onSave={(next) => save(employee, next)}
               />
             ) : null}
@@ -143,6 +136,7 @@ function EditForm({
   departments,
   positions,
   busy,
+  approving,
   onSave,
 }: {
   employee: Employee;
@@ -150,13 +144,17 @@ function EditForm({
   departments: Option[];
   positions: Option[];
   busy: boolean;
-  onSave: (next: Omit<Employee, "id" | "employeeCode" | "lineLinked">) => void;
+  approving: boolean;
+  onSave: (next: Omit<Employee, "id" | "lineLinked">) => void;
 }) {
+  const [employeeCode, setEmployeeCode] = useState(
+    isProvisionalCode(employee.employeeCode) ? "" : employee.employeeCode,
+  );
   const [fullName, setFullName] = useState(employee.fullName);
   const [branchId, setBranchId] = useState(employee.branchId ?? "");
   const [departmentId, setDepartmentId] = useState(employee.departmentId ?? "");
   const [positionId, setPositionId] = useState(employee.positionId ?? "");
-  const [status, setStatus] = useState(employee.status);
+  const [status, setStatus] = useState<Employee["status"]>(approving ? "ACTIVE" : employee.status);
 
   return (
     <form
@@ -164,6 +162,7 @@ function EditForm({
       onSubmit={(event) => {
         event.preventDefault();
         onSave({
+          employeeCode: employeeCode.trim() || employee.employeeCode,
           fullName,
           branchId: branchId || null,
           departmentId: departmentId || null,
@@ -172,6 +171,17 @@ function EditForm({
         });
       }}
     >
+      {isProvisionalCode(employee.employeeCode) ? (
+        <label className="block text-sm">
+          <span className="mb-1 block text-muted">รหัสพนักงาน</span>
+          <input
+            value={employeeCode}
+            onChange={(event) => setEmployeeCode(event.target.value)}
+            placeholder="ใส่รหัสจริงครั้งเดียว"
+            className="thumb-zone w-full rounded-lg border border-line bg-surface px-3 text-[15px]"
+          />
+        </label>
+      ) : null}
       <label className="block text-sm">
         <span className="mb-1 block text-muted">ชื่อ-นามสกุล</span>
         <input
@@ -188,7 +198,7 @@ function EditForm({
           onChange={(event) => setStatus(event.target.value as Employee["status"])}
           className="thumb-zone w-full rounded-lg border border-line bg-surface px-3 text-[15px]"
         >
-          <option value="INVITED">รอผูก LINE</option>
+          <option value="INVITED">รออนุมัติ</option>
           <option value="ACTIVE">ใช้งาน</option>
           <option value="SUSPENDED">ระงับ</option>
         </select>
@@ -202,7 +212,7 @@ function EditForm({
           disabled={busy}
           className="thumb-zone rounded-full bg-accent px-4 text-sm font-semibold text-accent-ink disabled:opacity-60"
         >
-          {busy ? "กำลังบันทึก…" : "บันทึก"}
+          {busy ? "กำลังบันทึก…" : approving ? "อนุมัติ" : "บันทึก"}
         </button>
       </div>
     </form>

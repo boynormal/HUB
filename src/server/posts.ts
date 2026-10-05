@@ -337,6 +337,21 @@ export async function notifyMentions(
       userIds.add(mention.id);
       continue;
     }
+    if (mention.kind === "all") {
+      const [members, post] = await Promise.all([
+        prisma.communicationPostReceipt.findMany({
+          where: { postId: context.postId, user: { status: "ACTIVE" } },
+          select: { userId: true },
+        }),
+        prisma.communicationPost.findFirst({
+          where: { id: context.postId },
+          select: { authorId: true },
+        }),
+      ]);
+      for (const member of members) userIds.add(member.userId);
+      if (post) userIds.add(post.authorId);
+      continue;
+    }
     const where: Prisma.UserWhereInput = { status: "ACTIVE" };
     if (mention.kind === "department") where.departmentId = mention.id;
     if (mention.kind === "branch") where.branchId = mention.id;

@@ -66,9 +66,9 @@ export function LiffSignIn({ liffId }: { liffId: string }) {
           setMessage(data.error ?? "เข้าสู่ระบบไม่สำเร็จ");
           return;
         }
-        if (data.state === "needs_link") {
+        if (data.state === "pending") {
           setState("link");
-          router.replace("/signin/link");
+          router.replace("/signin/pending");
           return;
         }
         router.replace("/");
@@ -96,7 +96,7 @@ export function LiffSignIn({ liffId }: { liffId: string }) {
       }`}
     >
       {state === "working" ? "กำลังเข้าสู่ระบบด้วย LINE…" : null}
-      {state === "link" ? "บัญชี LINE นี้ยังไม่ได้ผูกกับพนักงาน" : null}
+      {state === "link" ? "ส่งคำขอแล้ว รอฝ่ายบุคคลอนุมัติ" : null}
       {state === "error" ? message : null}
     </p>
   );

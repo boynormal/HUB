@@ -3,6 +3,7 @@ import type { FeedCard } from "@/server/posts";
 import { deadlineLabel, formatRelativeThai } from "@/server/time";
 import { PriorityBadge, ReceiptBadge, TypeBadge } from "@/components/badges";
 import { Icon } from "@/components/icons";
+import { FeedMedia } from "@/components/feed-photos";
 import { ShareLinkButton } from "@/components/share-link-button";
 
 /// Feed cards stay short: the summary here, the full text on the detail screen.
@@ -49,6 +50,12 @@ export function PostCard({ card }: { card: FeedCard }) {
         {showSummary ? (
           <p className="mt-2 line-clamp-4 whitespace-pre-wrap text-[15px] leading-relaxed">{summary}</p>
         ) : null}
+        {card.attachmentCount > 0 || card.images.length > 0 ? (
+          <p className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-accent px-3 py-1 text-xs font-semibold text-accent-ink">
+            <Icon name="paperclip" className="h-3.5 w-3.5" />
+            ไฟล์แนบ {Math.max(card.attachmentCount, card.images.length)}
+          </p>
+        ) : null}
         {card.tags.length > 0 ? (
           <div className="mt-3 flex flex-wrap gap-2">
             {card.tags.map((tag) => (
@@ -63,31 +70,7 @@ export function PostCard({ card }: { card: FeedCard }) {
           </div>
         ) : null}
       </div>
-      {card.images.length > 0 ? (
-        <div className="mt-3 bg-surface-muted">
-          {card.images.map((image) =>
-            image.kind === "video" ? (
-              <video
-                key={image.id}
-                src={`/api/attachments/${image.id}?inline=1`}
-                controls
-                playsInline
-                preload="metadata"
-                className="max-h-[32rem] w-full bg-black"
-              >
-                {image.fileName}
-              </video>
-            ) : (
-              <img
-                key={image.id}
-                src={`/api/attachments/${image.id}?inline=1`}
-                alt={image.fileName}
-                className="max-h-[32rem] w-full object-contain"
-              />
-            ),
-          )}
-        </div>
-      ) : null}
+      {card.images.length > 0 ? <FeedMedia images={card.images} /> : null}
 
       <div className="mt-3 flex flex-col gap-3 border-t border-line bg-surface-muted px-4 py-3 sm:flex-row sm:items-center">
         <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2 text-xs text-muted">
@@ -96,9 +79,6 @@ export function PostCard({ card }: { card: FeedCard }) {
             <Stat icon="check" label={`รับทราบ ${card.acknowledgedCount}/${card.recipientCount}`} />
           ) : null}
           <Stat icon="message" label={String(card.commentCount)} />
-          {card.attachmentCount > 0 ? (
-            <Stat icon="paperclip" label={String(card.attachmentCount)} />
-          ) : null}
           <ReceiptBadge status={card.viewerStatus} />
           {card.confirmationDeadline ? (
             <span className={`text-xs font-medium ${card.viewerStatus === "OVERDUE" ? "text-danger" : "text-muted"}`}>

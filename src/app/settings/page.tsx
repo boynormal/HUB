@@ -25,7 +25,7 @@ export default async function SettingsPage() {
   const [users, active, lineLinked, topics, tags, published, scheduled, deleted] = counts;
 
   const links = [
-    { href: "/settings/users", label: "พนักงานและรหัสเชิญ", hint: `${users} คน` },
+    { href: "/settings/users", label: "พนักงาน", hint: `${users} คน` },
     { href: "/settings/departments", label: "ผู้จัดการแผนก", hint: "หนึ่งคนต่อแผนก" },
     { href: "/settings/topics", label: "หัวข้อ", hint: `${topics} หัวข้อ` },
     { href: "/settings/tags", label: "แท็ก", hint: `${tags} แท็ก` },

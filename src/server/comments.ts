@@ -3,6 +3,7 @@ import { AUDIT, recordAudit } from "@/server/audit";
 import { HttpError } from "@/server/auth/actor";
 import { PERMISSIONS, hasScopedPermission, isCommunicationAdmin, type ActorContext } from "@/server/rbac";
 import { canViewPost, notifyMentions } from "@/server/posts";
+import { mentionsToPlainText } from "@/server/mentions";
 import { sanitizeCommentContent, toPlainText } from "@/server/sanitize";
 import { createInAppNotifications } from "@/server/notifications";
 
@@ -118,7 +119,7 @@ export async function createComment(
     metadata: { postId: input.postId },
   });
 
-  await notifyThread(actor, post, comment);
+  await notifyThread(actor, post, { ...comment, excerpt: toPlainText(mentionsToPlainText(content), 140) });
   await notifyMentions(content, {
     postId: post.id,
     commentId: comment.id,
@@ -129,34 +130,54 @@ export async function createComment(
   return { id: comment.id };
 }
 
-/// The post author hears about new comments; a reply also notifies the person being replied to.
+/// People who already took part in the post hear about a new comment. Reading alone does not count.
 async function notifyThread(
   actor: ActorContext,
   post: { id: string; title: string; authorId: string },
-  comment: { id: string; parentId: string | null },
+  comment: { id: string; parentId: string | null; excerpt: string },
 ): Promise<void> {
-  const targets = new Set<string>();
-  targets.add(post.authorId);
-  if (comment.parentId) {
-    const parent = await prisma.communicationComment.findUnique({
-      where: { id: comment.parentId },
+  const [acknowledged, commenters, parent] = await Promise.all([
+    prisma.communicationPostReceipt.findMany({
+      where: { postId: post.id, acknowledgedAt: { not: null } },
       select: { userId: true },
-    });
-    if (parent) targets.add(parent.userId);
-  }
+    }),
+    prisma.communicationComment.findMany({
+      where: { postId: post.id, deletedAt: null },
+      select: { userId: true },
+      distinct: ["userId"],
+    }),
+    comment.parentId
+      ? prisma.communicationComment.findUnique({
+          where: { id: comment.parentId },
+          select: { userId: true },
+        })
+      : Promise.resolve(null),
+  ]);
+
+  const targets = new Set<string>([post.authorId]);
+  for (const row of acknowledged) targets.add(row.userId);
+  for (const row of commenters) targets.add(row.userId);
+  const replyUserId = parent?.userId ?? null;
+  if (replyUserId) targets.add(replyUserId);
   targets.delete(actor.userId);
   if (targets.size === 0) return;
 
+  const linkPath = `/posts/${post.id}#comment-${comment.id}`;
   await createInAppNotifications(
-    [...targets].map((userId) => ({
-      userId,
-      type: comment.parentId ? ("REPLY" as const) : ("COMMENT" as const),
-      title: `${actor.fullName} แสดงความคิดเห็น`,
-      body: post.title,
-      linkPath: `/posts/${post.id}#comment-${comment.id}`,
-      postId: post.id,
-      commentId: comment.id,
-    })),
+    [...targets].map((userId) => {
+      const isReply = userId === replyUserId;
+      return {
+        userId,
+        type: isReply ? ("REPLY" as const) : ("COMMENT" as const),
+        title: isReply
+          ? `${actor.fullName} ตอบกลับใน ${post.title}`
+          : `${actor.fullName} แสดงความคิดเห็นใน ${post.title}`,
+        body: comment.excerpt,
+        linkPath,
+        postId: post.id,
+        commentId: comment.id,
+      };
+    }),
   );
 }
 

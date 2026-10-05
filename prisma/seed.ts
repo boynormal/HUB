@@ -123,8 +123,8 @@ const POSITIONS = [
 async function main() {
   const company = await prisma.company.upsert({
     where: { code: "SJC" },
-    update: { name: "บริษัท เอส เจริญชัย กรุ๊ป" },
-    create: { code: "SJC", name: "บริษัท เอส เจริญชัย กรุ๊ป" },
+    update: { name: "ส.เจริญชัย รีไซเคิล" },
+    create: { code: "SJC", name: "ส.เจริญชัย รีไซเคิล" },
   });
 
   for (const permission of PERMISSION_LIST) {
