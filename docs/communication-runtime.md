@@ -63,28 +63,15 @@ ingress:
   - service: http_status:404
 ```
 
-## Windows services
+## Starting the app
 
-Each process runs as a service so a reboot brings the app back without anyone logging in. With
-[NSSM](https://nssm.cc):
+Double-click `scripts\run-server.cmd`, or run it from the project folder. It opens the worker in a
+window named HubWorker and keeps the web server in the current window on `127.0.0.1:3110`. Leave
+both windows open. The Cloudflare tunnel is separate: `cloudflared service install` after
+`config.yml` is in place.
 
-```powershell
-nssm install HubWeb "C:\Program Files\nodejs\node.exe" "node_modules\next\dist\bin\next" start
-nssm set HubWeb AppDirectory "D:\project\Communication Center"
-nssm set HubWeb AppEnvironmentExtra HOSTNAME=127.0.0.1 NODE_ENV=production PORT=3110
-nssm set HubWeb AppStdout "D:\hub-data\logs\web.log"
-nssm set HubWeb AppStderr "D:\hub-data\logs\web.log"
-
-nssm install HubWorker "C:\Program Files\nodejs\node.exe" "node_modules\tsx\dist\cli.mjs" worker\index.ts
-nssm set HubWorker AppDirectory "D:\project\Communication Center"
-nssm set HubWorker AppStdout "D:\hub-data\logs\worker.log"
-nssm set HubWorker AppStderr "D:\hub-data\logs\worker.log"
-
-cloudflared service install
-```
-
-Start order does not matter. If the worker is down, publishing still delivers notifications inside
-the request; reminders wait until the worker returns.
+If the worker is down, publishing still delivers notifications inside the request; reminders wait
+until the worker returns.
 
 ## Health check
 
@@ -110,8 +97,7 @@ git pull
 npm ci
 npx prisma migrate deploy
 npm run build
-nssm restart HubWeb
-nssm restart HubWorker
 ```
 
-Run `npm run test` and `npm run typecheck` before restarting the services.
+Then close the web and HubWorker windows and start `scripts\run-server.cmd` again. Run `npm run test`
+and `npm run typecheck` before replacing a running server.

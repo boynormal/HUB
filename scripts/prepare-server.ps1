@@ -36,4 +36,4 @@ Write-Host "บิลด์เว็บ..."
 npm run build
 if ($LASTEXITCODE -ne 0) { throw "npm run build ไม่สำเร็จ" }
 
-Write-Host "พร้อมแล้ว ขั้นต่อไปรัน scripts\install-services.ps1 ใน PowerShell แบบผู้ดูแลระบบ"
+Write-Host "พร้อมแล้ว เปิดระบบด้วย scripts\run-server.cmd"
