@@ -2,8 +2,18 @@
 
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { ImageViewer } from "@/components/attachment-gallery";
+import { Icon } from "@/components/icons";
 import { mentionTokensToHtml, mentionsToPlainText, restoreMentions } from "@/server/mentions";
 import { formatRelativeThai } from "@/server/time";
+
+const COMMENT_IMAGE_LIMIT = 4;
+const COMMENT_IMAGE_BYTES = 8 * 1024 * 1024;
+
+export type CommentImageView = {
+  id: string;
+  fileName: string;
+};
 
 export type CommentView = {
   id: string;
@@ -14,6 +24,7 @@ export type CommentView = {
   isPinned: boolean;
   createdAt: string;
   canDelete: boolean;
+  images: CommentImageView[];
   replies: CommentView[];
 };
 
@@ -100,6 +111,7 @@ function CommentItem({
   depth?: number;
 }) {
   const router = useRouter();
+  const [viewer, setViewer] = useState<number | null>(null);
 
   async function remove() {
     if (!window.confirm("ลบความคิดเห็นนี้?")) return;
@@ -130,10 +142,38 @@ function CommentItem({
             </p>
           </div>
         </div>
-        <div
-          className="post-body mt-2 text-[15px]"
-          dangerouslySetInnerHTML={{ __html: mentionTokensToHtml(comment.content) }}
-        />
+        {comment.content.trim().length > 0 ? (
+          <div
+            className="post-body mt-2 text-[15px]"
+            dangerouslySetInnerHTML={{ __html: mentionTokensToHtml(comment.content) }}
+          />
+        ) : null}
+        {comment.images.length > 0 ? (
+          <div className="scroll-plain mt-2 flex gap-2 overflow-x-auto">
+            {comment.images.map((image, index) => (
+              <button
+                key={image.id}
+                type="button"
+                onClick={() => setViewer(index)}
+                className="h-24 w-24 shrink-0 overflow-hidden rounded-lg border border-line bg-surface-muted"
+              >
+                <img
+                  src={`/api/attachments/${image.id}?inline=1`}
+                  alt={image.fileName}
+                  className="h-full w-full object-contain"
+                />
+              </button>
+            ))}
+          </div>
+        ) : null}
+        {viewer !== null ? (
+          <ImageViewer
+            images={comment.images.map((image) => ({ id: image.id, fileName: image.fileName, kind: "image" }))}
+            index={viewer}
+            onIndex={setViewer}
+            onClose={() => setViewer(null)}
+          />
+        ) : null}
         <div className="mt-2 flex flex-wrap gap-2">
           {allowComments && depth < 2 ? (
             <button
@@ -218,9 +258,11 @@ function CommentForm({
 }) {
   const [content, setContent] = useState("");
   const field = useRef<HTMLTextAreaElement>(null);
+  const picker = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [mentions, setMentions] = useState<MentionResult[]>([]);
+  const [images, setImages] = useState<Array<{ key: string; file: File; url: string }>>([]);
 
   /// Mentions are inserted as tokens, so typing plain text never notifies anyone.
   async function lookupMentions(value: string, cursor: number) {
@@ -269,22 +311,54 @@ function CommentForm({
     setMentions([]);
   }
 
+  function addImages(list: FileList | null) {
+    if (!list) return;
+    const picked = Array.from(list);
+    if (images.length + picked.length > COMMENT_IMAGE_LIMIT) {
+      setError("แนบได้ไม่เกิน 4 รูป");
+    }
+    const room = COMMENT_IMAGE_LIMIT - images.length;
+    const next = picked.slice(0, Math.max(room, 0)).flatMap((file) => {
+      if (!file.type.startsWith("image/")) {
+        setError("ความคิดเห็นแนบได้เฉพาะรูปภาพ");
+        return [];
+      }
+      if (file.size > COMMENT_IMAGE_BYTES) {
+        setError("รูปใหญ่เกิน 8 MB");
+        return [];
+      }
+      return [{ key: crypto.randomUUID(), file, url: URL.createObjectURL(file) }];
+    });
+    setImages((current) => [...current, ...next]);
+    if (picker.current) picker.current.value = "";
+  }
+
+  function removeImage(key: string) {
+    setImages((current) => {
+      const found = current.find((image) => image.key === key);
+      if (found) URL.revokeObjectURL(found.url);
+      return current.filter((image) => image.key !== key);
+    });
+  }
+
   async function submit(event: React.FormEvent) {
     event.preventDefault();
-    if (content.trim().length === 0) return;
+    if (content.trim().length === 0 && images.length === 0) return;
     setBusy(true);
     setError(null);
     try {
-      const response = await fetch(`/api/posts/${postId}/comments`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content, parentId }),
-      });
+      const body = new FormData();
+      body.set("content", content);
+      if (parentId) body.set("parentId", parentId);
+      for (const image of images) body.append("images", image.file);
+      const response = await fetch(`/api/posts/${postId}/comments`, { method: "POST", body });
       if (!response.ok) {
         const data = (await response.json()) as { error?: string };
         setError(data.error ?? "ส่งไม่สำเร็จ");
         return;
       }
+      for (const image of images) URL.revokeObjectURL(image.url);
+      setImages([]);
       setContent("");
       onDone();
     } catch {
@@ -351,18 +425,51 @@ function CommentForm({
           </ul>
         ) : null}
       </div>
+      {images.length > 0 ? (
+        <div className="scroll-plain mt-2 flex gap-2 overflow-x-auto">
+          {images.map((image) => (
+            <div key={image.key} className="relative h-24 w-24 shrink-0">
+              <img src={image.url} alt={image.file.name} className="h-full w-full rounded-lg border border-line object-contain" />
+              <button
+                type="button"
+                onClick={() => removeImage(image.key)}
+                className="thumb-zone absolute end-1 top-1 rounded-full bg-surface px-2 text-xs font-semibold"
+              >
+                ลบ
+              </button>
+            </div>
+          ))}
+        </div>
+      ) : null}
       {error ? (
         <p role="alert" className="mt-1 text-sm text-danger">
           {error}
         </p>
       ) : null}
-      <button
-        type="submit"
-        disabled={busy || content.trim().length === 0}
-        className="thumb-zone mt-2 rounded-full bg-accent px-4 text-sm font-semibold text-accent-ink disabled:opacity-60"
-      >
-        {busy ? "กำลังส่ง…" : "ส่งความคิดเห็น"}
-      </button>
+      <div className="mt-2 flex flex-wrap gap-2">
+        <input
+          ref={picker}
+          type="file"
+          accept="image/png,image/jpeg,image/webp,image/gif"
+          multiple
+          className="sr-only"
+          onChange={(event) => addImages(event.target.files)}
+        />
+        <button
+          type="button"
+          onClick={() => picker.current?.click()}
+          className="thumb-zone inline-flex items-center gap-2 rounded-full border border-line px-4 text-sm font-medium"
+        >
+          <Icon name="paperclip" className="h-4 w-4" /> แนบรูป
+        </button>
+        <button
+          type="submit"
+          disabled={busy || (content.trim().length === 0 && images.length === 0)}
+          className="thumb-zone rounded-full bg-accent px-4 text-sm font-semibold text-accent-ink disabled:opacity-60"
+        >
+          {busy ? "กำลังส่ง…" : "ส่งความคิดเห็น"}
+        </button>
+      </div>
     </form>
   );
 }

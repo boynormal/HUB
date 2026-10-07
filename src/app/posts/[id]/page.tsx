@@ -32,6 +32,7 @@ function toCommentViews(nodes: CommentNode[]): CommentView[] {
     isPinned: node.isPinned,
     createdAt: node.createdAt.toISOString(),
     canDelete: node.canDelete,
+    images: node.images,
     replies: toCommentViews(node.replies),
   }));
 }
