@@ -129,6 +129,7 @@ model User {
   uploads            CommunicationAttachment[]
   notifications      CommunicationNotification[]
   auditLogs          CommunicationAuditLog[]
+  pushSubscriptions  PushSubscription[]
 
   @@index([companyId])
   @@index([branchId])
@@ -136,6 +137,21 @@ model User {
   @@index([positionId])
   @@index([status])
   @@map("users")
+}
+
+/// One browser or installed phone app that should receive lock-screen alerts.
+model PushSubscription {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("push_subscriptions")
 }
 
 // ------------------------------------------------------------------------ rbac

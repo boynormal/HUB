@@ -11,6 +11,9 @@ const schema = z.object({
   APP_ORIGIN: z.string().default("http://localhost:3000"),
   BOOTSTRAP_ADMIN_EMPLOYEE_CODE: z.string().default(""),
   BOOTSTRAP_ADMIN_PASSWORD: z.string().default(""),
+  VAPID_PUBLIC_KEY: z.string().default(""),
+  VAPID_PRIVATE_KEY: z.string().default(""),
+  VAPID_SUBJECT: z.string().default(""),
 });
 
 export type Env = z.infer<typeof schema>;
@@ -43,4 +46,9 @@ export function liffConfigured(): boolean {
 
 export function linePushConfigured(): boolean {
   return env().LINE_MESSAGING_TOKEN.length > 0;
+}
+
+export function phoneAlertsConfigured(): boolean {
+  const e = env();
+  return e.VAPID_PUBLIC_KEY.length > 0 && e.VAPID_PRIVATE_KEY.length > 0;
 }

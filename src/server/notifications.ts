@@ -1,5 +1,6 @@
 import type { NotificationType, Prisma } from "@prisma/client";
 import { prisma } from "@/server/db";
+import { deliverPhoneAlerts } from "@/server/phone-alerts";
 
 export type NotificationDraft = {
   userId: string;
@@ -33,6 +34,7 @@ export async function createInAppNotifications(
       sentAt: new Date(),
     })),
   });
+  void deliverPhoneAlerts(drafts).catch((error) => console.error("phone alert failed", error));
   return result.count;
 }
 

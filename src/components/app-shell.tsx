@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { type ReactNode } from "react";
 import { Icon } from "@/components/icons";
+import { PhoneAlerts } from "@/components/phone-alerts";
 import { UserChip } from "@/components/user-chip";
 
 export type ShellUser = {
@@ -96,6 +97,8 @@ export function AppShell({
         )}
         <main className="px-3 pb-28 pt-4 xl:px-4 xl:pb-10 xl:pt-3">{children}</main>
       </div>
+
+      <PhoneAlerts />
 
       {/* Thumb-zone navigation for the LINE in-app browser. */}
       <nav
