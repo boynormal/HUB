@@ -88,6 +88,84 @@ export async function isRecipient(rules: TargetRule[], userId: string): Promise<
   return found !== null;
 }
 
+function matchesTarget(
+  user: {
+    id: string;
+    companyId: string;
+    branchId: string | null;
+    departmentId: string | null;
+    positionId: string | null;
+  },
+  roleIds: Set<string>,
+  groupIds: Set<string>,
+  rules: TargetRule[],
+): boolean {
+  if (rules.length === 0) return false;
+  if (rules.some((rule) => rule.targetType === "ALL")) return true;
+  return rules.some((rule) => {
+    switch (rule.targetType) {
+      case "COMPANY":
+        return rule.targetId === user.companyId;
+      case "BRANCH":
+        return rule.targetId !== null && rule.targetId === user.branchId;
+      case "DEPARTMENT":
+        return rule.targetId !== null && rule.targetId === user.departmentId;
+      case "POSITION":
+        return rule.targetId !== null && rule.targetId === user.positionId;
+      case "ROLE":
+        return rule.targetId !== null && roleIds.has(rule.targetId);
+      case "USER":
+        return rule.targetId === user.id;
+      case "GROUP":
+        return rule.targetId !== null && groupIds.has(rule.targetId);
+      default:
+        return false;
+    }
+  });
+}
+
+/// Gives an active employee the published posts that still include them.
+/// Receipts created at publish time stay as they are. This only adds people who joined later.
+export async function backfillReceiptsForUser(userId: string): Promise<number> {
+  const user = await prisma.user.findFirst({
+    where: { id: userId, status: "ACTIVE" },
+    select: {
+      id: true,
+      companyId: true,
+      branchId: true,
+      departmentId: true,
+      positionId: true,
+      roles: { select: { roleId: true } },
+      groupMemberships: { select: { groupId: true } },
+    },
+  });
+  if (!user) return 0;
+
+  const posts = await prisma.communicationPost.findMany({
+    where: {
+      deletedAt: null,
+      status: { in: ["PUBLISHED", "EXPIRED"] },
+      receipts: { none: { userId } },
+    },
+    select: {
+      id: true,
+      targets: { select: { targetType: true, targetId: true } },
+    },
+  });
+  const roleIds = new Set(user.roles.map((role) => role.roleId));
+  const groupIds = new Set(user.groupMemberships.map((membership) => membership.groupId));
+  const matched = posts
+    .filter((post) => matchesTarget(user, roleIds, groupIds, post.targets))
+    .map((post) => post.id);
+  if (matched.length === 0) return 0;
+
+  const result = await prisma.communicationPostReceipt.createMany({
+    data: matched.map((postId) => ({ postId, userId })),
+    skipDuplicates: true,
+  });
+  return result.count;
+}
+
 /// Creates the missing receipt rows for a published post. Existing rows are left alone
 /// so an edited recipient list never erases an acknowledgement.
 export async function syncReceipts(postId: string, recipientIds: string[]): Promise<number> {

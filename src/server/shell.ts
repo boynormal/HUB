@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { getActor } from "@/server/auth/actor";
+import { backfillReceiptsForUser } from "@/server/recipients";
 import { currentSessionClaims } from "@/server/auth/session";
 import { prisma } from "@/server/db";
 import { unreadNotificationCount } from "@/server/notifications";
@@ -16,7 +17,10 @@ import type { ShellProps } from "@/components/app-shell";
 /// An invited LINE account stays on the waiting page until an admin approves it.
 export async function requirePageActor(): Promise<ActorContext> {
   const actor = await getActor();
-  if (actor) return actor;
+  if (actor) {
+    await backfillReceiptsForUser(actor.userId);
+    return actor;
+  }
   if ((await sessionUserStatus()) === "INVITED") redirect("/signin/pending");
   redirect("/signin");
 }
