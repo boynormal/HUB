@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { syncRolesForPosition } from "@/server/auth/account";
 import { clientIp, HttpError, requireActor } from "@/server/auth/actor";
 import { prisma } from "@/server/db";
 import { AUDIT, recordAudit } from "@/server/audit";
@@ -57,6 +58,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
       },
       select: { id: true, employeeCode: true, fullName: true },
     });
+    await syncRolesForPosition(user.id, parsed.data.positionId);
     await recordAudit({
       userId: actor.userId,
       action: AUDIT.userUpdated,

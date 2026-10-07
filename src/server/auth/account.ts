@@ -229,6 +229,55 @@ export async function signInWithPassword(
   return { userId: user.id, fullName: user.fullName };
 }
 
+/// Position codes from seed decide who can post and who can open settings.
+/// An empty position leaves the current system admin grant in place.
+export async function syncRolesForPosition(userId: string, positionId: string | null): Promise<void> {
+  if (!positionId) return;
+  const position = await prisma.position.findUnique({
+    where: { id: positionId },
+    select: { code: true },
+  });
+  if (!position) return;
+
+  let grantKey: string | null = null;
+  let revokeKeys: string[] = [];
+  if (position.code === "EXEC") {
+    grantKey = "system_admin";
+    revokeKeys = ["lead"];
+  } else if (position.code === "MGR" || position.code === "SUPV") {
+    grantKey = "lead";
+    revokeKeys = ["system_admin"];
+  } else if (position.code === "STAFF") {
+    revokeKeys = ["lead", "system_admin"];
+  } else {
+    return;
+  }
+
+  await ensureEmployeeRole(userId);
+  if (grantKey) {
+    const granted = await grantCompanyRole(userId, grantKey);
+    if (!granted) return;
+  }
+  if (revokeKeys.length > 0) {
+    await prisma.userRole.deleteMany({
+      where: { userId, role: { key: { in: revokeKeys } } },
+    });
+  }
+}
+
+async function grantCompanyRole(userId: string, key: string): Promise<boolean> {
+  const role = await prisma.role.findUnique({ where: { key }, select: { id: true } });
+  if (!role) return false;
+  const existing = await prisma.userRole.findFirst({
+    where: { userId, roleId: role.id, scope: "COMPANY" },
+    select: { id: true },
+  });
+  if (!existing) {
+    await prisma.userRole.create({ data: { userId, roleId: role.id, scope: "COMPANY" } });
+  }
+  return true;
+}
+
 /// Every employee holds the employee role, so a linked account can read its feed immediately.
 export async function ensureEmployeeRole(userId: string): Promise<void> {
   const role = await prisma.role.findUnique({ where: { key: "employee" }, select: { id: true } });

@@ -83,6 +83,14 @@ export default async function FeedPage({ searchParams }: { searchParams: SearchP
           <TopicSheet topics={topics} selectedSlug={params.topic} tag={params.tag} priority={params.priority} />
 
           <div className="scroll-plain min-h-0 flex-1 overflow-y-auto overscroll-contain max-xl:[&>:first-child]:mt-0">
+          {shell.canCompose ? (
+            <Link
+              href="/compose"
+              className="thumb-zone mx-auto mb-3 mt-3 flex w-full max-w-xl items-center justify-center gap-2 rounded-full bg-accent px-4 text-sm font-semibold text-accent-ink"
+            >
+              <Icon name="plus" className="h-4 w-4" /> สร้างประกาศ
+            </Link>
+          ) : null}
           {empty ? (
             <p className="mt-6 rounded-xl border border-line bg-surface p-6 text-center text-sm text-muted">
               ยังไม่มีประกาศที่ส่งถึงคุณ
@@ -120,14 +128,6 @@ export default async function FeedPage({ searchParams }: { searchParams: SearchP
               <h2 id="feed-latest" className="section-label">
                 ล่าสุด
               </h2>
-              {shell.canCompose ? (
-                <Link
-                  href="/compose"
-                  className="thumb-zone mx-auto mb-3 flex w-full max-w-xl items-center justify-center gap-2 rounded-full bg-accent px-4 text-sm font-semibold text-accent-ink"
-                >
-                  <Icon name="plus" className="h-4 w-4" /> สร้างประกาศ
-                </Link>
-              ) : null}
               <div className="grid gap-3">
                 {feed.latest.map((card) => (
                   <PostCard key={card.id} card={card} />

@@ -27,6 +27,7 @@ type RoleSeed = {
   description: string;
   scope: PermissionScope;
   permissions: string[];
+  permissionScopes?: Partial<Record<string, PermissionScope>>;
 };
 
 const ALL_KEYS = PERMISSION_LIST.map((permission) => permission.key);
@@ -38,6 +39,23 @@ const ROLE_LIST: RoleSeed[] = [
     description: "อ่านประกาศที่ส่งถึงตัวเอง และกดรับทราบ",
     scope: "COMPANY",
     permissions: ["communication.view"],
+  },
+  {
+    key: "lead",
+    name: "หัวหน้า",
+    description: "โพสต์และเผยแพร่ประกาศของตัวเอง ไม่เห็นการตั้งค่า",
+    scope: "COMPANY",
+    permissions: [
+      "communication.view",
+      "communication.create",
+      "communication.edit",
+      "communication.publish",
+      "communication.manage_recipients",
+    ],
+    permissionScopes: {
+      "communication.edit": "OWN",
+      "communication.publish": "OWN",
+    },
   },
   {
     key: "topic_manager",
@@ -148,17 +166,18 @@ async function main() {
     });
     const permissions = await prisma.permission.findMany({
       where: { key: { in: roleSeed.permissions } },
-      select: { id: true },
+      select: { id: true, key: true },
     });
     // Re-seeding must not leave a role holding a permission that was removed from this list.
     await prisma.rolePermission.deleteMany({
       where: { roleId: role.id, permissionId: { notIn: permissions.map((p) => p.id) } },
     });
     for (const permission of permissions) {
+      const scope = roleSeed.permissionScopes?.[permission.key] ?? roleSeed.scope;
       await prisma.rolePermission.upsert({
         where: { roleId_permissionId: { roleId: role.id, permissionId: permission.id } },
-        update: { scope: roleSeed.scope },
-        create: { roleId: role.id, permissionId: permission.id, scope: roleSeed.scope },
+        update: { scope },
+        create: { roleId: role.id, permissionId: permission.id, scope },
       });
     }
   }

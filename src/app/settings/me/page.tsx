@@ -7,6 +7,7 @@ import { formatThaiDateTime } from "@/server/time";
 
 const ROLE_LABEL: Record<string, string> = {
   employee: "พนักงาน",
+  lead: "หัวหน้า",
   topic_manager: "ผู้ดูแลหัวข้อ",
   communication_admin: "ผู้ดูแลการสื่อสาร",
   system_admin: "ผู้ดูแลระบบ",

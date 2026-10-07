@@ -1,7 +1,7 @@
 import { prisma } from "@/server/db";
 import { AUDIT, recordAudit } from "@/server/audit";
 import { HttpError } from "@/server/auth/actor";
-import { PERMISSIONS, hasScopedPermission, isCommunicationAdmin, type ActorContext } from "@/server/rbac";
+import { isSystemAdmin, type ActorContext } from "@/server/rbac";
 import { canViewPost, notifyMentions } from "@/server/posts";
 import { mentionsToPlainText } from "@/server/mentions";
 import { sanitizeCommentContent, toPlainText } from "@/server/sanitize";
@@ -39,7 +39,7 @@ export async function loadComments(actor: ActorContext, postId: string): Promise
     orderBy: [{ isPinned: "desc" }, { createdAt: "asc" }],
   });
 
-  const moderator = isCommunicationAdmin(actor) || hasScopedPermission(actor, PERMISSIONS.moderate, {});
+  const canDeleteOthers = isSystemAdmin(actor);
   const byId = new Map<string, CommentNode>();
   const roots: CommentNode[] = [];
 
@@ -53,7 +53,7 @@ export async function loadComments(actor: ActorContext, postId: string): Promise
       departmentName: row.user.department?.name ?? null,
       isPinned: row.isPinned,
       createdAt: row.createdAt,
-      canDelete: moderator || row.user.id === actor.userId,
+      canDelete: canDeleteOthers || row.user.id === actor.userId,
       replies: [],
     });
   }
@@ -184,14 +184,11 @@ async function notifyThread(
 export async function deleteComment(actor: ActorContext, commentId: string, ip: string | null) {
   const comment = await prisma.communicationComment.findFirst({
     where: { id: commentId, deletedAt: null },
-    select: { id: true, userId: true, postId: true, post: { select: { topicId: true } } },
+    select: { id: true, userId: true },
   });
   if (!comment) throw new HttpError(404, "ไม่พบความคิดเห็นนี้");
 
-  const canModerate =
-    isCommunicationAdmin(actor) ||
-    hasScopedPermission(actor, PERMISSIONS.moderate, { topicId: comment.post.topicId });
-  if (comment.userId !== actor.userId && !canModerate) {
+  if (comment.userId !== actor.userId && !isSystemAdmin(actor)) {
     throw new HttpError(403, "ลบความคิดเห็นนี้ไม่ได้");
   }
 
